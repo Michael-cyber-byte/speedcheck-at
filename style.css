@@ -1,24 +1,28 @@
-@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;600&display=swap');
+@import url('https://api.fontshare.com/v2/css?f[]=satoshi@900,700,500,400&display=swap');
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 :root {
-  --bg: #0a0a0a;
-  --surface: #141414;
-  --border: #222;
-  --ok: #00e676;
-  --warn: #ff6d00;
-  --danger: #ff1744;
-  --muted: #555;
-  --text: #f0f0f0;
-  --accent: #00b4d8;
+  --red:   #ff0037;
+  --bb:    #230523;
+  --off:   #f7f6f3;
+  --white: #ffffff;
+  --ink:   #1a0a1a;
+  --muted: #5e525e;
+  --lm:    #8a7e8a;
+  --line:  rgba(26, 10, 26, 0.1);
+
+  /* Functional speed states */
+  --ok:     #3fb950;
+  --warn:   #ff0037;
+  --danger: #ff0037;
 }
 
 html, body {
   height: 100%;
-  background: var(--bg);
-  color: var(--text);
-  font-family: 'IBM Plex Mono', monospace;
+  background: var(--bb);
+  color: var(--white);
+  font-family: 'Satoshi', Calibri, Arial, -apple-system, sans-serif;
   overflow: hidden;
 }
 
@@ -28,18 +32,19 @@ html, body {
   height: 100dvh;
 }
 
-/* TOP HUD */
+/* ── HUD ────────────────────────────────────────────────────────────────── */
+
 #hud {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   gap: 1px;
-  background: var(--border);
-  border-bottom: 1px solid var(--border);
+  background: rgba(255,255,255,0.06);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
   flex-shrink: 0;
 }
 
 .hud-cell {
-  background: var(--surface);
+  background: var(--bb);
   padding: 10px 12px;
   display: flex;
   flex-direction: column;
@@ -49,31 +54,37 @@ html, body {
 
 .hud-label {
   font-size: 9px;
-  letter-spacing: 0.15em;
-  color: var(--muted);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--lm);
   text-transform: uppercase;
-  margin-bottom: 2px;
+  margin-bottom: 3px;
 }
 
 .hud-value {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 28px;
+  font-size: 26px;
+  font-weight: 900;
   line-height: 1;
-  color: var(--text);
+  color: var(--white);
+  letter-spacing: -0.02em;
   transition: color 0.3s;
 }
 
 .hud-unit {
   font-size: 9px;
-  color: var(--muted);
-  margin-top: 1px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.25);
+  margin-top: 2px;
 }
 
-/* BIG SPEED DISPLAY */
+/* ── SPEED PANEL ────────────────────────────────────────────────────────── */
+
 #speed-panel {
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  padding: 16px 20px;
+  background: var(--bb);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  padding: 20px 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -84,131 +95,77 @@ html, body {
 #speed-display {
   display: flex;
   align-items: baseline;
-  gap: 6px;
+  gap: 8px;
 }
 
 #speed-num {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 88px;
+  font-size: 96px;
+  font-weight: 900;
   line-height: 1;
-  color: var(--ok);
+  letter-spacing: -0.03em;
+  color: var(--white);
   transition: color 0.3s;
-  text-shadow: 0 0 40px currentColor;
 }
 
 #speed-kmh {
-  font-size: 18px;
-  color: var(--muted);
-  font-weight: 600;
-  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.35);
+  margin-bottom: 10px;
 }
+
+/* ── LIMIT SIGN ─────────────────────────────────────────────────────────── */
 
 #limit-display {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
 }
 
 #limit-sign {
   width: 72px;
   height: 72px;
   border-radius: 50%;
-  border: 5px solid #cc0000;
-  background: white;
+  border: 5px solid var(--red);
+  background: var(--white);
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-direction: column;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.4);
 }
 
 #limit-num {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 28px;
-  color: #111;
+  font-size: 30px;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  color: var(--ink);
   line-height: 1;
 }
 
 #limit-label {
-  font-size: 8px;
-  color: var(--muted);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  color: var(--lm);
 }
 
-/* STATUS BAR */
-#status-bar {
-  background: var(--bg);
-  border-bottom: 1px solid var(--border);
-  padding: 6px 16px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-}
+/* ── DELTA BADGE ────────────────────────────────────────────────────────── */
 
-#status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--muted);
-  flex-shrink: 0;
-}
-
-#status-dot.active    { background: var(--ok);   animation: pulse 2s infinite; }
-#status-dot.searching { background: var(--warn);  animation: pulse 1s infinite; }
-#status-dot.error     { background: var(--danger); }
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.3; }
-}
-
-#status-text {
-  font-size: 11px;
-  color: var(--muted);
-  flex: 1;
-}
-
-#overpass-status {
-  font-size: 10px;
-  color: var(--muted);
-  text-align: right;
-}
-
-/* MAP */
-#map {
-  flex: 1;
-  min-height: 0;
-}
-
-/* ALERT OVERLAY */
-#alert-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(255, 23, 68, 0.15);
-  border: 3px solid var(--danger);
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.2s;
-  z-index: 9999;
-}
-
-#alert-overlay.visible { opacity: 1; }
-
-/* DELTA BADGE */
 #delta-badge {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  background: var(--danger);
-  color: white;
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 22px;
-  padding: 4px 12px;
-  border-radius: 4px;
+  background: var(--red);
+  color: var(--white);
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  padding: 5px 14px;
   white-space: nowrap;
   opacity: 0;
   transition: opacity 0.3s;
@@ -218,16 +175,83 @@ html, body {
 
 #delta-badge.visible { opacity: 1; }
 
-/* Leaflet overrides */
-.leaflet-control-attribution { display: none; }
-.leaflet-tile-pane { filter: brightness(0.7) saturate(0.8); }
+/* ── STATUS BAR ─────────────────────────────────────────────────────────── */
 
-/* Custom marker */
-.car-marker {
-  width: 20px;
-  height: 20px;
-  background: var(--accent);
-  border: 3px solid white;
+#status-bar {
+  background: var(--off);
+  border-bottom: 1px solid var(--line);
+  padding: 7px 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+#status-dot {
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  box-shadow: 0 0 12px var(--accent);
+  background: var(--lm);
+  flex-shrink: 0;
+}
+
+#status-dot.active    { background: #3fb950; animation: pulse 2s infinite; }
+#status-dot.searching { background: var(--red); animation: pulse 1s infinite; }
+#status-dot.error     { background: var(--red); }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+
+#status-text {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
+  flex: 1;
+}
+
+#overpass-status {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--lm);
+  text-align: right;
+}
+
+/* ── MAP ────────────────────────────────────────────────────────────────── */
+
+#map {
+  flex: 1;
+  min-height: 0;
+}
+
+/* ── ALERT OVERLAY ──────────────────────────────────────────────────────── */
+
+#alert-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(255, 0, 55, 0.12);
+  border: 3px solid var(--red);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+  z-index: 9999;
+}
+
+#alert-overlay.visible { opacity: 1; }
+
+/* ── LEAFLET OVERRIDES ──────────────────────────────────────────────────── */
+
+.leaflet-control-attribution { display: none; }
+.leaflet-tile-pane { filter: brightness(0.75) saturate(0.7); }
+
+/* Custom position marker */
+.car-marker {
+  width: 18px;
+  height: 18px;
+  background: var(--red);
+  border: 3px solid var(--white);
+  border-radius: 50%;
+  box-shadow: 0 0 10px rgba(255,0,55,0.5);
 }
