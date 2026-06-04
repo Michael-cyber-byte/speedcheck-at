@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0a0a0a">
+  <title>SpeedCheck AT</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="app">
+  <div id="hud">
+    <div class="hud-cell">
+      <div class="hud-label">Genauigkeit</div>
+      <div class="hud-value" id="accuracy-val">—</div>
+      <div class="hud-unit">Meter</div>
+    </div>
+    <div class="hud-cell">
+      <div class="hud-label">Richtung</div>
+      <div class="hud-value" id="heading-val">—</div>
+      <div class="hud-unit">Grad</div>
+    </div>
+    <div class="hud-cell">
+      <div class="hud-label">Höhe</div>
+      <div class="hud-value" id="altitude-val">—</div>
+      <div class="hud-unit">Meter</div>
+    </div>
+  </div>
+
+  <div id="speed-panel">
+    <div id="speed-display">
+      <div id="speed-num">0</div>
+      <div id="speed-kmh">km/h</div>
+    </div>
+    <div id="delta-badge">+0 km/h</div>
+    <div id="limit-display">
+      <div id="limit-sign">
+        <div id="limit-num">—</div>
+      </div>
+      <div id="limit-label">Limit</div>
+    </div>
+  </div>
+
+  <div id="status-bar">
+    <div id="status-dot"></div>
+    <div id="status-text">GPS wird gestartet…</div>
+    <div id="overpass-status"></div>
+  </div>
+
+  <div id="map"></div>
+</div>
+
+<div id="alert-overlay"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="app.js"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js');
+  }
+</script>
+</body>
+</html>
