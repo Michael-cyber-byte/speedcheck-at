@@ -287,11 +287,10 @@ function handleStart() {
 function initMap(lat, lon) {
   if (map) return;
 
-  // rotate: true activates leaflet-rotate plugin (loaded via CDN)
-  const mapOpts = { zoomControl: true, attributionControl: false };
-  try { if (typeof L.Map.mergeOptions === 'function') mapOpts.rotate = true; } catch {}
-
-  map = L.map('map', mapOpts).setView([lat, lon], 16);
+  // rotate: true — leaflet-rotate plugin adds this support (cdn.jsdelivr.net)
+  // Leaflet silently ignores unknown options if plugin didn't load
+  map = L.map('map', { zoomControl: true, attributionControl: false, rotate: true })
+          .setView([lat, lon], 16);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 })
    .addTo(map);
 
