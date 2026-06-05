@@ -48,6 +48,25 @@ function unlockAudio() {
   } catch { /* not supported */ }
 }
 
+// Silent audio loop — keeps AudioContext + GPS alive when app goes to background on iOS
+// Uses a 2-second near-silent buffer on loop (gain 0.001 = inaudible)
+function startSilentLoop() {
+  try {
+    const ctx    = getAudioCtx();
+    const rate   = ctx.sampleRate;
+    const buf    = ctx.createBuffer(1, rate * 2, rate); // 2s mono
+    // Leave buffer as silence (default zeroes)
+    const gain   = ctx.createGain();
+    gain.gain.value = 0.001; // inaudible but non-zero
+    const src    = ctx.createBufferSource();
+    src.buffer   = buf;
+    src.loop     = true;
+    src.connect(gain);
+    gain.connect(ctx.destination);
+    src.start(0);
+  } catch { /* not supported */ }
+}
+
 function playDoubleBeep(threshold) {
   if (soundMode === 'off') return;
   try {
@@ -132,7 +151,8 @@ document.addEventListener('visibilitychange', () => {
 
 // ── START OVERLAY (iOS AudioContext unlock) ────────────────────────────────
 function handleStart() {
-  unlockAudio(); // must happen synchronously inside tap handler
+  unlockAudio();       // must happen synchronously inside tap handler
+  startSilentLoop();   // keep AudioContext + GPS alive in background (iOS)
 
   document.getElementById('start-overlay').classList.add('hidden');
   appStarted = true;
