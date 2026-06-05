@@ -219,6 +219,25 @@ html, body {
   text-align: right;
 }
 
+#sound-btn {
+  flex-shrink: 0;
+  height: 26px;
+  padding: 0 9px;
+  background: var(--bb);
+  color: rgba(255,255,255,0.7);
+  border: 1px solid rgba(26,10,26,0.2);
+  font-family: 'Satoshi', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+#sound-btn:hover        { background: var(--ink); color: #fff; }
+#sound-btn.sound-off    { background: var(--off); color: var(--lm); border-color: var(--line); }
+
 /* ── MAP ────────────────────────────────────────────────────────────────── */
 
 #map {

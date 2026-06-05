@@ -5,6 +5,71 @@ let currentLimit = null;
 let lastOverpassPos = null;
 let overpassCooldown = false;
 
+// ── SOUND SYSTEM ───────────────────────────────────────────────────────────
+const SPEED_THRESHOLDS = [30, 50, 60, 70, 80, 100, 120];
+let audioCtx = null;
+let soundEnabled = localStorage.getItem('soundEnabled') !== 'false'; // default: on
+let triggeredThresholds = new Set();
+
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+function playDoubleBeep() {
+  if (!soundEnabled) return;
+  try {
+    const ctx = getAudioCtx();
+    // Resume context if suspended (browser autoplay policy)
+    if (ctx.state === 'suspended') ctx.resume();
+
+    function beep(startTime) {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.value = 880;
+      gain.gain.setValueAtTime(0, startTime);
+      gain.gain.linearRampToValueAtTime(0.12, startTime + 0.012);
+      gain.gain.linearRampToValueAtTime(0, startTime + 0.08);
+      osc.start(startTime);
+      osc.stop(startTime + 0.09);
+    }
+
+    const now = ctx.currentTime;
+    beep(now);
+    beep(now + 0.16); // second beep 160ms later
+  } catch { /* audio not supported */ }
+}
+
+function checkThresholds(speed) {
+  SPEED_THRESHOLDS.forEach(t => {
+    if (speed >= t && !triggeredThresholds.has(t)) {
+      triggeredThresholds.add(t);
+      playDoubleBeep();
+    } else if (speed < t - 3) {
+      // reset with 3 km/h hysteresis to avoid rapid re-triggering
+      triggeredThresholds.delete(t);
+    }
+  });
+}
+
+function toggleSound() {
+  soundEnabled = !soundEnabled;
+  localStorage.setItem('soundEnabled', soundEnabled);
+  updateSoundBtn();
+  // Wake up AudioContext on first user interaction
+  if (soundEnabled) getAudioCtx();
+}
+
+function updateSoundBtn() {
+  const btn = document.getElementById('sound-btn');
+  if (!btn) return;
+  btn.textContent  = soundEnabled ? '♪ AN' : '♪ AUS';
+  btn.classList.toggle('sound-off', !soundEnabled);
+}
+
 // ── MAP INIT ───────────────────────────────────────────────────────────────
 function initMap(lat, lon) {
   if (map) return;
@@ -22,9 +87,9 @@ function initMap(lat, lon) {
   userMarker = L.marker([lat, lon], { icon }).addTo(map);
   accuracyCircle = L.circle([lat, lon], {
     radius: 20,
-    color: '#00b4d8',
-    fillColor: '#00b4d8',
-    fillOpacity: 0.1,
+    color: '#ff0037',
+    fillColor: '#ff0037',
+    fillOpacity: 0.08,
     weight: 1,
   }).addTo(map);
 }
@@ -119,6 +184,7 @@ async function fetchSpeedLimit(lat, lon) {
 function setSpeed(kmh) {
   currentSpeed = Math.round(kmh);
   document.getElementById('speed-num').textContent = currentSpeed;
+  checkThresholds(currentSpeed);
   updateSpeedColor();
 }
 
@@ -136,7 +202,7 @@ function updateSpeedColor() {
   const badge   = document.getElementById('delta-badge');
 
   if (!currentLimit || currentSpeed === 0) {
-    speedEl.style.color = 'var(--ok)';
+    speedEl.style.color = 'var(--white)';
     overlay.classList.remove('visible');
     badge.classList.remove('visible');
     return;
@@ -155,7 +221,7 @@ function updateSpeedColor() {
     badge.textContent = '+' + delta + ' km/h';
     badge.classList.add('visible');
   } else {
-    speedEl.style.color = 'var(--ok)';
+    speedEl.style.color = 'var(--white)';
     overlay.classList.remove('visible');
     badge.classList.remove('visible');
   }
@@ -213,4 +279,5 @@ function startGPS() {
 // ── BOOT ───────────────────────────────────────────────────────────────────
 initMap(48.2082, 16.3738); // Vienna fallback
 setStatus('Tippe auf die Karte oder erlaube GPS', '');
+updateSoundBtn();
 startGPS();
