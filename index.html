@@ -3,15 +3,25 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="theme-color" content="#0a0a0a">
+  <meta name="theme-color" content="#230523">
   <title>SpeedCheck AT</title>
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
   <link rel="stylesheet" href="style.css">
-  <meta name="description" content="GPS-Geschwindigkeit in Echtzeit - Tempolimit-Vergleich auf österreichischen Straßen. Kostenlos, anonym, ohne App-Download.">
+  <meta name="description" content="GPS-Geschwindigkeit in Echtzeit — Tempolimit-Vergleich auf österreichischen Straßen. Kostenlos, anonym, ohne App-Download.">
 </head>
 <body>
+
+<!-- START OVERLAY — unlocks iOS AudioContext on first tap -->
+<div id="start-overlay">
+  <div id="start-box">
+    <div id="start-eyebrow">GPS · AUDIO · TEMPOLIMIT</div>
+    <div id="start-title">SpeedCheck</div>
+    <button id="start-btn" onclick="handleStart()">START</button>
+    <div id="start-hint">Tippen um GPS und Audio zu aktivieren</div>
+  </div>
+</div>
 
 <div id="app">
   <div id="hud">
@@ -48,9 +58,10 @@
 
   <div id="status-bar">
     <div id="status-dot"></div>
-    <div id="status-text">GPS wird gestartet…</div>
+    <div id="status-text">Warte auf Start…</div>
     <div id="overpass-status"></div>
-    <button id="sound-btn" onclick="toggleSound()">♪ AN</button>
+    <button id="test-btn"  onclick="testBeep()">TEST</button>
+    <button id="sound-btn" onclick="toggleSound()">♪ PIEP</button>
   </div>
 
   <div id="map"></div>
