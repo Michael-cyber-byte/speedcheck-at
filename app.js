@@ -7,8 +7,22 @@ let overpassCooldown = false;
 
 // ── SOUND SYSTEM ───────────────────────────────────────────────────────────
 const SPEED_THRESHOLDS = [30, 50, 60, 70, 80, 100, 120];
+
+// C major scale mapped to thresholds (C4 → B4)
+const C_MAJOR_FREQ = {
+  30:  261.63, // C4
+  50:  293.66, // D4
+  60:  329.63, // E4
+  70:  349.23, // F4
+  80:  392.00, // G4
+  100: 440.00, // A4
+  120: 493.88, // B4
+};
+
+// Sound modes: 'off' | 'beep' | 'scale'
+const SOUND_MODES = ['off', 'beep', 'scale'];
+let soundMode = localStorage.getItem('soundMode') || 'beep'; // default: beep
 let audioCtx = null;
-let soundEnabled = localStorage.getItem('soundEnabled') !== 'false'; // default: on
 let triggeredThresholds = new Set();
 
 function getAudioCtx() {
@@ -16,20 +30,22 @@ function getAudioCtx() {
   return audioCtx;
 }
 
-function playDoubleBeep() {
-  if (!soundEnabled) return;
+function playDoubleBeep(threshold) {
+  if (soundMode === 'off') return;
   try {
     const ctx = getAudioCtx();
-    // Resume context if suspended (browser autoplay policy)
     if (ctx.state === 'suspended') ctx.resume();
 
-    function beep(startTime) {
+    // Frequency: fixed 880Hz for 'beep', scale note for 'scale'
+    const freq = soundMode === 'scale' ? (C_MAJOR_FREQ[threshold] || 880) : 880;
+
+    function beep(startTime, f) {
       const osc  = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.connect(gain);
       gain.connect(ctx.destination);
       osc.type = 'sine';
-      osc.frequency.value = 880;
+      osc.frequency.value = f;
       gain.gain.setValueAtTime(0, startTime);
       gain.gain.linearRampToValueAtTime(0.12, startTime + 0.012);
       gain.gain.linearRampToValueAtTime(0, startTime + 0.08);
@@ -38,8 +54,10 @@ function playDoubleBeep() {
     }
 
     const now = ctx.currentTime;
-    beep(now);
-    beep(now + 0.16); // second beep 160ms later
+    beep(now, freq);
+    // Second beep: same note in 'beep' mode, one step up in 'scale' mode
+    const freq2 = soundMode === 'scale' ? freq * 1.122 : freq; // ~one semitone up
+    beep(now + 0.16, freq2);
   } catch { /* audio not supported */ }
 }
 
@@ -47,27 +65,27 @@ function checkThresholds(speed) {
   SPEED_THRESHOLDS.forEach(t => {
     if (speed >= t && !triggeredThresholds.has(t)) {
       triggeredThresholds.add(t);
-      playDoubleBeep();
+      playDoubleBeep(t);
     } else if (speed < t - 3) {
-      // reset with 3 km/h hysteresis to avoid rapid re-triggering
       triggeredThresholds.delete(t);
     }
   });
 }
 
 function toggleSound() {
-  soundEnabled = !soundEnabled;
-  localStorage.setItem('soundEnabled', soundEnabled);
+  const idx = SOUND_MODES.indexOf(soundMode);
+  soundMode = SOUND_MODES[(idx + 1) % SOUND_MODES.length];
+  localStorage.setItem('soundMode', soundMode);
   updateSoundBtn();
-  // Wake up AudioContext on first user interaction
-  if (soundEnabled) getAudioCtx();
+  if (soundMode !== 'off') getAudioCtx(); // wake up AudioContext
 }
 
 function updateSoundBtn() {
   const btn = document.getElementById('sound-btn');
   if (!btn) return;
-  btn.textContent  = soundEnabled ? '♪ AN' : '♪ AUS';
-  btn.classList.toggle('sound-off', !soundEnabled);
+  const labels = { off: '♪ AUS', beep: '♪ PIEP', scale: '♪ DUR' };
+  btn.textContent = labels[soundMode];
+  btn.dataset.mode = soundMode;
 }
 
 // ── MAP INIT ───────────────────────────────────────────────────────────────

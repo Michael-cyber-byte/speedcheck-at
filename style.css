@@ -235,8 +235,9 @@ html, body {
   transition: background 0.2s, color 0.2s;
 }
 
-#sound-btn:hover        { background: var(--ink); color: #fff; }
-#sound-btn.sound-off    { background: var(--off); color: var(--lm); border-color: var(--line); }
+#sound-btn:hover                    { background: var(--ink); color: #fff; }
+#sound-btn[data-mode="off"]         { background: var(--off); color: var(--lm); border-color: var(--line); }
+#sound-btn[data-mode="scale"]       { background: var(--red); color: #fff; border-color: var(--red); }
 
 /* ── MAP ────────────────────────────────────────────────────────────────── */
 
