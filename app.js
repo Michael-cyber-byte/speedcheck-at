@@ -200,36 +200,90 @@ function checkAutoDriveMode(speed) {
   }
 }
 
-// ── COMPASS ────────────────────────────────────────────────────────────────
+// ── COMPASS + DEVICE ORIENTATION (smooth, ~60fps) ──────────────────────────
+let orientationActive = false;
+let pendingBearing    = null;
+let bearingRAF        = null;
+let smoothedHeading   = null;
+
+// Low-pass filter for jitter reduction
+function lerpAngle(current, target, t) {
+  if (current === null) return target;
+  let diff = target - current;
+  if (diff >  180) diff -= 360;
+  if (diff < -180) diff += 360;
+  return (current + diff * t + 360) % 360;
+}
+
+function scheduleBearingUpdate(heading) {
+  smoothedHeading = lerpAngle(smoothedHeading, heading, 0.25); // 0.25 = responsive but smooth
+  pendingBearing  = smoothedHeading;
+
+  // Rotate car marker immediately
+  const el = userMarker?.getElement?.();
+  if (el) el.style.transform = `rotate(${smoothedHeading}deg)`;
+
+  if (!bearingRAF && compassMode === 'heading') {
+    bearingRAF = requestAnimationFrame(() => {
+      if (pendingBearing !== null && map) {
+        try { map.setBearing(pendingBearing); } catch {}
+      }
+      bearingRAF = null;
+    });
+  }
+}
+
+function handleDeviceOrientation(e) {
+  if (!orientationActive || compassMode !== 'heading') return;
+  let heading = null;
+  if (e.webkitCompassHeading !== undefined && e.webkitCompassHeading !== null) {
+    heading = e.webkitCompassHeading; // iOS — clockwise from north ✓
+  } else if (e.alpha !== null && e.absolute) {
+    heading = (360 - e.alpha + 360) % 360; // Android absolute — convert to CW
+  } else if (e.alpha !== null) {
+    heading = (360 - e.alpha + 360) % 360; // Android fallback
+  }
+  if (heading !== null) scheduleBearingUpdate(heading);
+}
+
+async function startOrientationTracking() {
+  // iOS 13+ requires explicit permission
+  if (typeof DeviceOrientationEvent !== 'undefined' &&
+      typeof DeviceOrientationEvent.requestPermission === 'function') {
+    try {
+      const res = await DeviceOrientationEvent.requestPermission();
+      if (res !== 'granted') return;
+    } catch { return; }
+  }
+  orientationActive = true;
+  // Prefer absolute orientation; fall back to relative
+  window.addEventListener('deviceorientationabsolute', handleDeviceOrientation, true);
+  window.addEventListener('deviceorientation',         handleDeviceOrientation, true);
+}
+
 function toggleCompass() {
   compassMode = compassMode === 'north' ? 'heading' : 'north';
   localStorage.setItem('compassMode', compassMode);
   updateCompassBtn();
   if (compassMode === 'north' && map) {
+    smoothedHeading = null;
     try { map.setBearing(0); } catch {}
-  } else if (currentHeading != null && map) {
-    try { map.setBearing(currentHeading); } catch {}
   }
+  // Orientation tracking already running if started in handleStart
 }
 
 function updateCompassBtn() {
   const btn = document.getElementById('compass-btn');
   if (!btn) return;
-  btn.textContent   = compassMode === 'north' ? '⬤ N' : '↑ HDG';
-  btn.dataset.mode  = compassMode;
+  btn.textContent  = compassMode === 'north' ? '⬤ N' : '↑ HDG';
+  btn.dataset.mode = compassMode;
 }
 
+// GPS heading as fallback when DeviceOrientation not available
 function applyHeading(heading) {
-  if (heading == null || !map) return;
+  if (heading == null || orientationActive) return; // DeviceOrientation takes priority
   currentHeading = heading;
-
-  // Rotate directional car marker
-  const el = userMarker?.getElement?.();
-  if (el) el.style.transform = `rotate(${heading}deg)`;
-
-  if (compassMode === 'heading') {
-    try { map.setBearing(heading); } catch {}
-  }
+  scheduleBearingUpdate(heading);
 }
 
 // ── RADAR TOGGLE ───────────────────────────────────────────────────────────
@@ -280,6 +334,7 @@ function handleStart() {
   appStarted = true;
   requestWakeLock();
   applyDriveMode();
+  startOrientationTracking(); // DeviceOrientation permission — needs user gesture
   startGPS();
 }
 
