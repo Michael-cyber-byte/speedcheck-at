@@ -7,6 +7,7 @@ let overpassCooldown = false;
 let lastHighway   = '';   // remembered for all-endpoints-fail fallback
 let lastPos       = null; // { lat, lon, ts } for calculated speed
 let appStarted    = false;
+let wakeLock      = null;
 
 // ── SOUND SYSTEM ───────────────────────────────────────────────────────────
 const SPEED_THRESHOLDS = [30, 50, 60, 70, 80, 100, 120];
@@ -113,12 +114,29 @@ function updateSoundBtn() {
   btn.dataset.mode = soundMode;
 }
 
+// ── WAKE LOCK — keep screen on while app is running ───────────────────────
+async function requestWakeLock() {
+  if (!('wakeLock' in navigator)) return; // not supported
+  try {
+    wakeLock = await navigator.wakeLock.request('screen');
+    wakeLock.addEventListener('release', () => { wakeLock = null; });
+  } catch { /* denied or not available */ }
+}
+
+// Re-acquire after tab becomes visible again (iOS releases on background)
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && appStarted) {
+    requestWakeLock();
+  }
+});
+
 // ── START OVERLAY (iOS AudioContext unlock) ────────────────────────────────
 function handleStart() {
   unlockAudio(); // must happen synchronously inside tap handler
 
   document.getElementById('start-overlay').classList.add('hidden');
   appStarted = true;
+  requestWakeLock();
   startGPS();
 }
 
@@ -160,6 +178,15 @@ const AT_DEFAULTS = {
   default_urban: 50, default_rural: 100,
 };
 
+// Higher = more relevant road when multiple ways are nearby
+const HIGHWAY_PRIORITY = {
+  motorway: 10, motorway_link: 9,
+  trunk: 8,     trunk_link: 7,
+  primary: 6,   secondary: 5,   tertiary: 4,
+  unclassified: 3, residential: 2,
+  service: 1,   living_street: 1,
+};
+
 function distanceM(lat1, lon1, lat2, lon2) {
   const R = 6371000;
   const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -179,6 +206,21 @@ async function queryOverpass(url, query) {
   return res.json();
 }
 
+function pickBestWay(elements) {
+  // Filter out non-driveable ways, then sort by priority descending
+  const driveable = elements.filter(el => {
+    const hw = el.tags?.highway || '';
+    return hw && !['footway','cycleway','path','steps','pedestrian','construction','proposed'].includes(hw);
+  });
+  if (!driveable.length) return elements[0] || null; // fallback to first
+  driveable.sort((a, b) => {
+    const pa = HIGHWAY_PRIORITY[a.tags?.highway] ?? 0;
+    const pb = HIGHWAY_PRIORITY[b.tags?.highway] ?? 0;
+    return pb - pa;
+  });
+  return driveable[0];
+}
+
 async function fetchSpeedLimit(lat, lon) {
   if (overpassCooldown) return;
   if (lastOverpassPos && distanceM(lat, lon, lastOverpassPos.lat, lastOverpassPos.lon) < 50) return;
@@ -189,7 +231,10 @@ async function fetchSpeedLimit(lat, lon) {
 
   setOverpassStatus('⟳ Laden…');
 
-  const query = `[out:json][timeout:10];way(around:30,${lat},${lon})["highway"];out tags 1;`;
+  // 50m radius, exclude foot/cycle paths, return up to 10 results for best-pick
+  const query = `[out:json][timeout:12];
+way(around:50,${lat},${lon})["highway"]["highway"!~"footway|cycleway|path|steps|construction|proposed"];
+out tags 10;`;
 
   let data = null;
   let usedLabel = '';
@@ -198,17 +243,14 @@ async function fetchSpeedLimit(lat, lon) {
     try {
       data = await queryOverpass(ep.url, query);
       usedLabel = ep.label;
-      break; // success — stop trying
-    } catch {
-      // try next endpoint
-    }
+      break;
+    } catch { /* try next */ }
   }
 
   if (!data) {
-    // All endpoints failed — use AT defaults by last known road type
     if (lastHighway) {
       const fallback = AT_DEFAULTS[lastHighway] || AT_DEFAULTS.default_urban;
-      setLimit(fallback, lastHighway, `AT-Default (offline)`);
+      setLimit(fallback, lastHighway, 'AT-Default (offline)');
     } else {
       setOverpassStatus('Offline — kein Limit');
     }
@@ -220,9 +262,10 @@ async function fetchSpeedLimit(lat, lon) {
     return;
   }
 
-  const tags     = data.elements[0].tags || {};
+  const best     = pickBestWay(data.elements);
+  const tags     = best.tags || {};
   const highway  = tags.highway || '';
-  const maxspeed = tags.maxspeed || tags['maxspeed:forward'] || '';
+  const maxspeed = tags.maxspeed || tags['maxspeed:forward'] || tags['maxspeed:backward'] || '';
   if (highway) lastHighway = highway;
 
   let limit  = null;
@@ -230,15 +273,16 @@ async function fetchSpeedLimit(lat, lon) {
 
   if (maxspeed) {
     const n = parseInt(maxspeed);
-    if (!isNaN(n))               { limit = n;   source = `OSM · ${usedLabel}`; }
-    else if (maxspeed==='AT:urban')    { limit = 50;  source = 'AT urban'; }
-    else if (maxspeed==='AT:rural')    { limit = 100; source = 'AT rural'; }
-    else if (maxspeed==='AT:motorway') { limit = 130; source = 'AT motorway'; }
+    if (!isNaN(n))                     { limit = n;   source = `OSM · ${usedLabel}`; }
+    else if (maxspeed === 'AT:urban')   { limit = 50;  source = 'AT urban'; }
+    else if (maxspeed === 'AT:rural')   { limit = 100; source = 'AT rural'; }
+    else if (maxspeed === 'AT:motorway'){ limit = 130; source = 'AT motorway'; }
+    else if (maxspeed === 'walk')       { limit = 7;   source = 'Schrittgeschwindigkeit'; }
   }
 
   if (!limit && highway) {
     limit  = AT_DEFAULTS[highway] || AT_DEFAULTS.default_urban;
-    source = `${highway} · ${usedLabel}`;
+    source = `${highway}`;
   }
 
   setLimit(limit, highway, source);
