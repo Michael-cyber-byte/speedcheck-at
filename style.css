@@ -446,11 +446,25 @@ body.drive-mode #test-btn        { display: none; }
     grid-column: 1; grid-row: 1;
     border-bottom: none;
     border-right: 1px solid rgba(255,255,255,0.08);
+    flex-direction: column;
     justify-content: center;
-    padding: 12px 16px;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 16px 20px;
   }
 
   #speed-num    { font-size: clamp(56px, 12vw, 88px); }
+
+  #limit-display {
+    flex-direction: row;
+    align-items: center;
+    gap: 14px;
+  }
+
+  #limit-sign   { width: 58px; height: 58px; }
+  #limit-num    { font-size: 24px; }
+
+  #delta-badge  { top: auto; bottom: 12px; left: 20px; transform: none; }
 
   #status-bar   {
     grid-column: 1; grid-row: 2;
