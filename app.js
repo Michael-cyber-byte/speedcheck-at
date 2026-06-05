@@ -267,7 +267,9 @@ function toggleCompass() {
   updateCompassBtn();
   if (compassMode === 'north' && map) {
     smoothedHeading = null;
-    try { map.setBearing(0); } catch {}
+    pendingBearing  = null;
+    if (bearingRAF) { cancelAnimationFrame(bearingRAF); bearingRAF = null; }
+    requestAnimationFrame(() => { try { map.setBearing(0); } catch {} });
   }
   // Orientation tracking already running if started in handleStart
 }
@@ -342,10 +344,13 @@ function handleStart() {
 function initMap(lat, lon) {
   if (map) return;
 
-  // rotate: true — leaflet-rotate plugin adds this support (cdn.jsdelivr.net)
-  // Leaflet silently ignores unknown options if plugin didn't load
-  map = L.map('map', { zoomControl: true, attributionControl: false, rotate: true })
-          .setView([lat, lon], 16);
+  // rotate: true — leaflet-rotate plugin; bearingControl: false = no built-in button
+  map = L.map('map', {
+    zoomControl: true,
+    attributionControl: false,
+    rotate: true,
+    bearingControl: false,  // disable plugin's own compass button — we use our own
+  }).setView([lat, lon], 16);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 })
    .addTo(map);
 

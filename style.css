@@ -395,10 +395,12 @@ body.drive-mode #test-btn        { display: none; }
 .leaflet-control-attribution { display: none; }
 .leaflet-tile-pane { filter: brightness(0.75) saturate(0.7); }
 
-/* Smooth compass rotation — transition on the rotate container */
-.leaflet-rotate-container {
-  transition: transform 0.1s linear;
-}
+/* Smooth compass rotation */
+.leaflet-rotate-container { transition: transform 0.1s linear; }
+
+/* Hide leaflet-rotate's built-in bearing control — we use our own */
+.leaflet-bearing-control,
+.leaflet-control-bearing { display: none !important; }
 
 .car-marker {
   width: 0;
