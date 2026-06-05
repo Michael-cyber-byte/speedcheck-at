@@ -13,6 +13,11 @@ let wakeLock        = null;
 let driveMode    = localStorage.getItem('driveMode')    === '1';
 let radarEnabled = localStorage.getItem('radarEnabled') === '1';
 let voiceEnabled = localStorage.getItem('voiceEnabled') === '1';
+let compassMode  = localStorage.getItem('compassMode')  || 'north'; // 'north' | 'heading'
+
+// Auto Drive Mode timer
+let speedZeroSince  = null;
+let currentHeading  = null;
 
 // Radar state
 let cameraMarkers   = [];
@@ -162,6 +167,7 @@ function updateVoiceBtn() {
 function toggleDriveMode() {
   driveMode = !driveMode;
   localStorage.setItem('driveMode', driveMode ? '1' : '0');
+  speedZeroSince = null; // reset timer on manual toggle
   applyDriveMode();
 }
 
@@ -172,6 +178,58 @@ function applyDriveMode() {
   btn.textContent   = driveMode ? '⬛ EXIT' : '▶ DRIVE';
   btn.dataset.state = driveMode ? 'on' : 'off';
   if (map) setTimeout(() => map.invalidateSize(), 50);
+}
+
+function checkAutoDriveMode(speed) {
+  if (!appStarted) return;
+  if (speed >= 15 && !driveMode) {
+    driveMode = true;
+    localStorage.setItem('driveMode', '1');
+    applyDriveMode();
+    speedZeroSince = null;
+  } else if (speed === 0 && driveMode) {
+    if (!speedZeroSince) speedZeroSince = Date.now();
+    else if (Date.now() - speedZeroSince >= 20000) {
+      driveMode = false;
+      localStorage.setItem('driveMode', '0');
+      applyDriveMode();
+      speedZeroSince = null;
+    }
+  } else if (speed > 0) {
+    speedZeroSince = null; // still moving — reset timer
+  }
+}
+
+// ── COMPASS ────────────────────────────────────────────────────────────────
+function toggleCompass() {
+  compassMode = compassMode === 'north' ? 'heading' : 'north';
+  localStorage.setItem('compassMode', compassMode);
+  updateCompassBtn();
+  if (compassMode === 'north' && map) {
+    try { map.setBearing(0); } catch {}
+  } else if (currentHeading != null && map) {
+    try { map.setBearing(currentHeading); } catch {}
+  }
+}
+
+function updateCompassBtn() {
+  const btn = document.getElementById('compass-btn');
+  if (!btn) return;
+  btn.textContent   = compassMode === 'north' ? '⬤ N' : '↑ HDG';
+  btn.dataset.mode  = compassMode;
+}
+
+function applyHeading(heading) {
+  if (heading == null || !map) return;
+  currentHeading = heading;
+
+  // Rotate directional car marker
+  const el = userMarker?.getElement?.();
+  if (el) el.style.transform = `rotate(${heading}deg)`;
+
+  if (compassMode === 'heading') {
+    try { map.setBearing(heading); } catch {}
+  }
 }
 
 // ── RADAR TOGGLE ───────────────────────────────────────────────────────────
@@ -228,15 +286,33 @@ function handleStart() {
 // ── MAP ────────────────────────────────────────────────────────────────────
 function initMap(lat, lon) {
   if (map) return;
-  map = L.map('map', { zoomControl: true, attributionControl: false })
-          .setView([lat, lon], 16);
+
+  // rotate: true activates leaflet-rotate plugin (loaded via CDN)
+  const mapOpts = { zoomControl: true, attributionControl: false };
+  try { if (typeof L.Map.mergeOptions === 'function') mapOpts.rotate = true; } catch {}
+
+  map = L.map('map', mapOpts).setView([lat, lon], 16);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 })
    .addTo(map);
-  const icon = L.divIcon({ className: 'car-marker', iconSize: [20,20], iconAnchor: [10,10] });
+
+  // Directional arrow marker (triangle)
+  const icon = L.divIcon({ className: 'car-marker', iconSize: [20,28], iconAnchor: [10,14] });
   userMarker     = L.marker([lat, lon], { icon }).addTo(map);
   accuracyCircle = L.circle([lat, lon], {
     radius: 20, color: '#ff0037', fillColor: '#ff0037', fillOpacity: 0.08, weight: 1,
   }).addTo(map);
+
+  // Compass control overlay
+  const CompassControl = L.Control.extend({
+    onAdd() {
+      const div = L.DomUtil.create('div', 'compass-control');
+      div.innerHTML = `<button id="compass-btn" onclick="toggleCompass()">⬤ N</button>`;
+      L.DomEvent.disableClickPropagation(div);
+      return div;
+    },
+  });
+  new CompassControl({ position: 'bottomright' }).addTo(map);
+  updateCompassBtn();
 }
 
 function updateMap(lat, lon, accuracy) {
@@ -432,6 +508,7 @@ function setSpeed(kmh) {
   currentSpeed = Math.round(kmh);
   document.getElementById('speed-num').textContent = currentSpeed;
   checkThresholds(currentSpeed);
+  checkAutoDriveMode(currentSpeed);
   updateSpeedColor();
 }
 
@@ -528,6 +605,7 @@ function startGPS() {
       setSpeed(kmh);
       setHUD(accuracy, heading, altitude);
       updateMap(lat, lon, accuracy);
+      applyHeading(heading);
       fetchSpeedLimit(lat, lon);
       fetchCameras(lat, lon);
       checkCameraProximity(lat, lon);
@@ -545,3 +623,4 @@ initMap(48.2082, 16.3738);
 updateSoundBtn();
 updateVoiceBtn();
 updateRadarBtn();
+// compass button created inside initMap, updateCompassBtn called there

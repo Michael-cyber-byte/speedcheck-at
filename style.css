@@ -389,12 +389,14 @@ body.drive-mode #test-btn        { display: none; }
 .leaflet-tile-pane { filter: brightness(0.75) saturate(0.7); }
 
 .car-marker {
-  width: 18px;
-  height: 18px;
-  background: var(--red);
-  border: 3px solid var(--white);
-  border-radius: 50%;
-  box-shadow: 0 0 10px rgba(255,0,55,0.5);
+  width: 0;
+  height: 0;
+  border-left: 9px solid transparent;
+  border-right: 9px solid transparent;
+  border-bottom: 26px solid var(--red);
+  filter: drop-shadow(0 0 6px rgba(255,0,55,0.7));
+  background: transparent !important;
+  transform-origin: center 18px; /* rotate around visual center */
 }
 
 .camera-marker {
@@ -405,4 +407,65 @@ body.drive-mode #test-btn        { display: none; }
   border-radius: 2px;
   box-shadow: 0 0 6px rgba(255,140,0,0.6);
   transform: rotate(45deg);
+}
+
+/* ── COMPASS CONTROL ────────────────────────────────────────────────────── */
+
+.compass-control button {
+  display: block;
+  height: 36px;
+  padding: 0 10px;
+  background: var(--bb);
+  color: rgba(255,255,255,0.7);
+  border: 1px solid rgba(255,255,255,0.15);
+  font-family: 'Satoshi', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+
+.compass-control button:active { background: var(--ink); }
+.compass-control button[data-mode="heading"] { background: var(--red); color: #fff; border-color: var(--red); }
+
+/* ── LANDSCAPE LAYOUT ───────────────────────────────────────────────────── */
+
+@media (orientation: landscape) {
+  #app {
+    display: grid;
+    grid-template-columns: min(44vw, 300px) 1fr;
+    grid-template-rows: 1fr auto auto;
+  }
+
+  #hud          { display: none; }
+
+  #speed-panel  {
+    grid-column: 1; grid-row: 1;
+    border-bottom: none;
+    border-right: 1px solid rgba(255,255,255,0.08);
+    justify-content: center;
+    padding: 12px 16px;
+  }
+
+  #speed-num    { font-size: clamp(56px, 12vw, 88px); }
+
+  #status-bar   {
+    grid-column: 1; grid-row: 2;
+    border-right: 1px solid rgba(255,255,255,0.08);
+    border-bottom: none;
+  }
+
+  #controls-bar {
+    grid-column: 1; grid-row: 3;
+    border-right: 1px solid rgba(255,255,255,0.08);
+  }
+
+  #map          { grid-column: 2; grid-row: 1 / 4; }
+
+  /* Drive mode in landscape: only controls bar + map */
+  body.drive-mode #status-bar  { display: none; }
+  body.drive-mode #speed-num   { font-size: clamp(72px, 15vw, 112px); }
 }
