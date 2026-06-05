@@ -11,11 +11,9 @@
   --muted: #5e525e;
   --lm:    #8a7e8a;
   --line:  rgba(26, 10, 26, 0.1);
-
-  /* Functional speed states */
-  --ok:     #3fb950;
-  --warn:   #ff0037;
-  --danger: #ff0037;
+  --ok:    #3fb950;
+  --warn:  #ff0037;
+  --danger:#ff0037;
 }
 
 html, body {
@@ -32,235 +30,6 @@ html, body {
   height: 100dvh;
 }
 
-/* ── HUD ────────────────────────────────────────────────────────────────── */
-
-#hud {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 1px;
-  background: rgba(255,255,255,0.06);
-  border-bottom: 1px solid rgba(255,255,255,0.08);
-  flex-shrink: 0;
-}
-
-.hud-cell {
-  background: var(--bb);
-  padding: 10px 12px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-
-.hud-label {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  color: var(--lm);
-  text-transform: uppercase;
-  margin-bottom: 3px;
-}
-
-.hud-value {
-  font-size: 26px;
-  font-weight: 900;
-  line-height: 1;
-  color: var(--white);
-  letter-spacing: -0.02em;
-  transition: color 0.3s;
-}
-
-.hud-unit {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: rgba(255,255,255,0.25);
-  margin-top: 2px;
-}
-
-/* ── SPEED PANEL ────────────────────────────────────────────────────────── */
-
-#speed-panel {
-  background: var(--bb);
-  border-bottom: 1px solid rgba(255,255,255,0.08);
-  padding: 20px 24px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-shrink: 0;
-  position: relative;
-}
-
-#speed-display {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-}
-
-#speed-num {
-  font-size: 96px;
-  font-weight: 900;
-  line-height: 1;
-  letter-spacing: -0.03em;
-  color: var(--white);
-  transition: color 0.3s;
-}
-
-#speed-kmh {
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: rgba(255,255,255,0.35);
-  margin-bottom: 10px;
-}
-
-/* ── LIMIT SIGN ─────────────────────────────────────────────────────────── */
-
-#limit-display {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-}
-
-#limit-sign {
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  border: 5px solid var(--red);
-  background: var(--white);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.4);
-}
-
-#limit-num {
-  font-size: 30px;
-  font-weight: 900;
-  letter-spacing: -0.03em;
-  color: var(--ink);
-  line-height: 1;
-}
-
-#limit-label {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--lm);
-}
-
-/* ── DELTA BADGE ────────────────────────────────────────────────────────── */
-
-#delta-badge {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: var(--red);
-  color: var(--white);
-  font-size: 18px;
-  font-weight: 900;
-  letter-spacing: 0.04em;
-  padding: 5px 14px;
-  white-space: nowrap;
-  opacity: 0;
-  transition: opacity 0.3s;
-  pointer-events: none;
-  z-index: 1000;
-}
-
-#delta-badge.visible { opacity: 1; }
-
-/* ── STATUS BAR ─────────────────────────────────────────────────────────── */
-
-#status-bar {
-  background: var(--off);
-  border-bottom: 1px solid var(--line);
-  padding: 7px 20px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-#status-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--lm);
-  flex-shrink: 0;
-}
-
-#status-dot.active    { background: #3fb950; animation: pulse 2s infinite; }
-#status-dot.searching { background: var(--red); animation: pulse 1s infinite; }
-#status-dot.error     { background: var(--red); }
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.3; }
-}
-
-#status-text {
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--muted);
-  flex: 1;
-}
-
-#overpass-status {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  color: var(--lm);
-  text-align: right;
-}
-
-#sound-btn {
-  flex-shrink: 0;
-  height: 26px;
-  padding: 0 9px;
-  background: var(--bb);
-  color: rgba(255,255,255,0.7);
-  border: 1px solid rgba(26,10,26,0.2);
-  font-family: 'Satoshi', sans-serif;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: background 0.2s, color 0.2s;
-}
-
-#sound-btn:hover                    { background: var(--ink); color: #fff; }
-#sound-btn[data-mode="off"]         { background: var(--off); color: var(--lm); border-color: var(--line); }
-#sound-btn[data-mode="scale"]       { background: var(--red); color: #fff; border-color: var(--red); }
-
-/* ── MAP ────────────────────────────────────────────────────────────────── */
-
-#map {
-  flex: 1;
-  min-height: 0;
-}
-
-/* ── ALERT OVERLAY ──────────────────────────────────────────────────────── */
-
-#alert-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(255, 0, 55, 0.12);
-  border: 3px solid var(--red);
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.2s;
-  z-index: 9999;
-}
-
-#alert-overlay.visible { opacity: 1; }
-
 /* ── START OVERLAY ──────────────────────────────────────────────────────── */
 
 #start-overlay {
@@ -274,10 +43,7 @@ html, body {
   transition: opacity 0.4s;
 }
 
-#start-overlay.hidden {
-  opacity: 0;
-  pointer-events: none;
-}
+#start-overlay.hidden { opacity: 0; pointer-events: none; }
 
 #start-box {
   display: flex;
@@ -337,35 +103,280 @@ html, body {
   font-size: 12px;
   font-weight: 500;
   color: rgba(255,255,255,0.3);
-  letter-spacing: 0.02em;
 }
 
-/* ── TEST BEEP BUTTON ───────────────────────────────────────────────────── */
+/* ── HUD ────────────────────────────────────────────────────────────────── */
 
-#test-btn {
+#hud {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1px;
+  background: rgba(255,255,255,0.06);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
   flex-shrink: 0;
-  height: 26px;
-  padding: 0 8px;
-  background: transparent;
+  transition: max-height 0.3s ease, opacity 0.3s ease;
+  max-height: 80px;
+  overflow: hidden;
+}
+
+.hud-cell {
+  background: var(--bb);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.hud-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
   color: var(--lm);
-  border: 1px solid var(--line);
-  font-family: 'Satoshi', sans-serif;
-  font-size: 10px;
+  text-transform: uppercase;
+  margin-bottom: 3px;
+}
+
+.hud-value {
+  font-size: 26px;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--white);
+  letter-spacing: -0.02em;
+  transition: color 0.3s;
+}
+
+.hud-unit {
+  font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  cursor: pointer;
-  transition: background 0.2s, color 0.2s;
+  color: rgba(255,255,255,0.25);
+  margin-top: 2px;
 }
 
-#test-btn:active { background: var(--bb); color: var(--white); }
+/* ── SPEED PANEL ────────────────────────────────────────────────────────── */
+
+#speed-panel {
+  background: var(--bb);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  position: relative;
+}
+
+#speed-display {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+#speed-num {
+  font-size: 96px;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: var(--white);
+  transition: color 0.3s;
+}
+
+#speed-kmh {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.35);
+  margin-bottom: 10px;
+}
+
+/* ── LIMIT SIGN ─────────────────────────────────────────────────────────── */
+
+#limit-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+#limit-sign {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 5px solid var(--red);
+  background: var(--white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+}
+
+#limit-num {
+  font-size: 30px;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  line-height: 1;
+}
+
+#limit-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--lm);
+}
+
+/* ── CAMERA ALERT ───────────────────────────────────────────────────────── */
+
+#camera-alert {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #ff8c00;
+  opacity: 0;
+  transition: opacity 0.3s;
+  white-space: nowrap;
+}
+
+#camera-alert.visible { opacity: 1; }
+
+/* ── DELTA BADGE ────────────────────────────────────────────────────────── */
+
+#delta-badge {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--red);
+  color: var(--white);
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  padding: 5px 14px;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+  z-index: 1000;
+}
+
+#delta-badge.visible { opacity: 1; }
+
+/* ── STATUS BAR ─────────────────────────────────────────────────────────── */
+
+#status-bar {
+  background: var(--off);
+  border-bottom: 1px solid var(--line);
+  padding: 5px 12px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
+  min-height: 36px;
+}
+
+#status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--lm);
+  flex-shrink: 0;
+}
+
+#status-dot.active    { background: #3fb950; animation: pulse 2s infinite; }
+#status-dot.searching { background: var(--red); animation: pulse 1s infinite; }
+#status-dot.error     { background: var(--red); }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+
+#status-text {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--muted);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#overpass-status {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--lm);
+  flex-shrink: 0;
+}
+
+/* ── STATUS BAR BUTTONS (shared base) ──────────────────────────────────── */
+
+#status-bar button {
+  flex-shrink: 0;
+  height: 26px;
+  padding: 0 7px;
+  background: var(--bb);
+  color: rgba(255,255,255,0.65);
+  border: 1px solid rgba(26,10,26,0.15);
+  font-family: 'Satoshi', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  white-space: nowrap;
+}
+
+#status-bar button:active { background: var(--ink); color: #fff; }
+
+/* Active states */
+#sound-btn[data-mode="scale"]   { background: var(--red); color: #fff; border-color: var(--red); }
+#sound-btn[data-mode="off"]     { background: var(--off); color: var(--lm); border-color: var(--line); }
+#voice-btn[data-state="on"]     { background: #1a6b2e; color: #fff; border-color: #1a6b2e; }
+#radar-btn[data-state="on"]     { background: #c85000; color: #fff; border-color: #c85000; }
+#drive-btn[data-state="on"]     { background: var(--red); color: #fff; border-color: var(--red); }
+
+/* ── MAP ────────────────────────────────────────────────────────────────── */
+
+#map {
+  flex: 1;
+  min-height: 0;
+}
+
+/* ── ALERT OVERLAY ──────────────────────────────────────────────────────── */
+
+#alert-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(255, 0, 55, 0.12);
+  border: 3px solid var(--red);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+  z-index: 9999;
+}
+
+#alert-overlay.visible { opacity: 1; }
+
+/* ── DRIVE MODE — minimal UI ────────────────────────────────────────────── */
+
+body.drive-mode #hud            { max-height: 0; opacity: 0; }
+body.drive-mode #status-text    { display: none; }
+body.drive-mode #overpass-status{ display: none; }
+body.drive-mode #speed-panel    { padding: 20px 20px; }
+body.drive-mode #speed-num      { font-size: 112px; }
 
 /* ── LEAFLET OVERRIDES ──────────────────────────────────────────────────── */
 
 .leaflet-control-attribution { display: none; }
 .leaflet-tile-pane { filter: brightness(0.75) saturate(0.7); }
 
-/* Custom position marker */
 .car-marker {
   width: 18px;
   height: 18px;
@@ -373,4 +384,14 @@ html, body {
   border: 3px solid var(--white);
   border-radius: 50%;
   box-shadow: 0 0 10px rgba(255,0,55,0.5);
+}
+
+.camera-marker {
+  width: 12px;
+  height: 12px;
+  background: #ff8c00;
+  border: 2px solid var(--white);
+  border-radius: 2px;
+  box-shadow: 0 0 6px rgba(255,140,0,0.6);
+  transform: rotate(45deg);
 }
