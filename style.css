@@ -436,8 +436,11 @@ body.drive-mode #test-btn        { display: none; }
 @media (orientation: landscape) {
   #app {
     display: grid;
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
     grid-template-columns: min(44vw, 300px) 1fr;
-    grid-template-rows: 1fr auto auto;
+    grid-template-rows: 1fr auto auto; /* speed fills remaining, status+controls fixed */
   }
 
   #hud          { display: none; }
@@ -451,9 +454,11 @@ body.drive-mode #test-btn        { display: none; }
     align-items: flex-start;
     gap: 16px;
     padding: 16px 20px;
+    min-height: 0;    /* prevent overflow pushing rows out */
+    overflow: hidden;
   }
 
-  #speed-num    { font-size: clamp(56px, 12vw, 88px); }
+  #speed-num    { font-size: clamp(52px, 11vw, 84px); }
 
   #limit-display {
     flex-direction: row;
@@ -461,8 +466,8 @@ body.drive-mode #test-btn        { display: none; }
     gap: 14px;
   }
 
-  #limit-sign   { width: 58px; height: 58px; }
-  #limit-num    { font-size: 24px; }
+  #limit-sign   { width: 56px; height: 56px; flex-shrink: 0; }
+  #limit-num    { font-size: 22px; }
 
   #delta-badge  { top: auto; bottom: 12px; left: 20px; transform: none; }
 
@@ -475,11 +480,13 @@ body.drive-mode #test-btn        { display: none; }
   #controls-bar {
     grid-column: 1; grid-row: 3;
     border-right: 1px solid rgba(255,255,255,0.08);
+    border-bottom: none;
   }
 
-  #map          { grid-column: 2; grid-row: 1 / 4; }
+  #map          { grid-column: 2; grid-row: 1 / 4; height: 100dvh; }
 
-  /* Drive mode in landscape: only controls bar + map */
+  /* Drive mode in landscape */
   body.drive-mode #status-bar  { display: none; }
-  body.drive-mode #speed-num   { font-size: clamp(72px, 15vw, 112px); }
+  body.drive-mode #app         { grid-template-rows: 1fr auto; }
+  body.drive-mode #speed-num   { font-size: clamp(68px, 14vw, 108px); }
 }
