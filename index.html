@@ -9,9 +9,9 @@
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
   <link rel="stylesheet" href="style.css">
-  <meta name="description" content="GPS-Geschwindigkeit in Echtzeit — Tempolimit-Vergleich auf österreichischen Straßen. Kostenlos, anonym, ohne App-Download.">
+  <meta name="description" content="GPS-Geschwindigkeit in Echtzeit — Tempolimit-Vergleich auf österreichischen Straßen.">
 </head>
-<body>
+<body data-theme="dark">
 
 <!-- START OVERLAY -->
 <div id="start-overlay">
@@ -23,8 +23,39 @@
   </div>
 </div>
 
+<!-- SETTINGS PANEL -->
+<div id="settings-panel">
+  <div id="settings-header">
+    <span>Einstellungen</span>
+    <button onclick="closeSettings()">✕</button>
+  </div>
+  <div id="settings-body">
+
+    <div class="setting-row">
+      <div class="setting-label">Test-Ton</div>
+      <button class="setting-btn" onclick="testBeep()">▶ Testton</button>
+    </div>
+
+    <div class="setting-row">
+      <div class="setting-label">Einheit</div>
+      <button class="setting-btn" id="unit-btn" onclick="toggleUnit()">km/h</button>
+    </div>
+
+    <div class="setting-row">
+      <div class="setting-label">Design</div>
+      <button class="setting-btn" id="theme-btn" onclick="toggleTheme()">🌙 Dunkel</button>
+    </div>
+
+    <div class="setting-row setting-row-col">
+      <div class="setting-label">Signal bei (km/h)</div>
+      <div id="threshold-picker"></div>
+    </div>
+
+  </div>
+</div>
+
 <div id="app">
-  <!-- HUD — ausgeblendet im Drive Mode -->
+  <!-- HUD -->
   <div id="hud">
     <div class="hud-cell">
       <div class="hud-label">Genauigkeit</div>
@@ -59,16 +90,16 @@
     </div>
   </div>
 
-  <!-- STATUS BAR — GPS info only -->
+  <!-- STATUS BAR -->
   <div id="status-bar">
     <div id="status-dot"></div>
     <div id="status-text">Warte auf Start…</div>
     <div id="overpass-status"></div>
   </div>
 
-  <!-- CONTROLS BAR — large tap targets for driving -->
+  <!-- CONTROLS BAR -->
   <div id="controls-bar">
-    <button id="test-btn"   onclick="testBeep()">TEST</button>
+    <button id="settings-open-btn" onclick="openSettings()">⚙</button>
     <button id="sound-btn"  onclick="toggleSound()">♪ PIEP</button>
     <button id="voice-btn"  onclick="toggleVoice()">🔊 AUS</button>
     <button id="radar-btn"  onclick="toggleRadar()">📷 AUS</button>
