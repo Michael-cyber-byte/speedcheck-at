@@ -1,0 +1,217 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   SHIFT11 Feedback Widget — feedback.css  v1.0  2026-06-06
+   Funktioniert mit und ohne shared.css (self-contained).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+#s11fb-root {
+  position: fixed;
+  inset: 0;
+  z-index: 99990;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+#s11fb-root.open {
+  opacity: 1;
+  pointer-events: all;
+}
+
+/* Overlay (tap-to-close) */
+#s11fb-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(26, 10, 26, 0.55);
+  backdrop-filter: blur(2px);
+}
+
+/* Panel */
+#s11fb-panel {
+  position: relative;
+  background: #1a0a1a;
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  max-height: 85dvh;
+  overflow-y: auto;
+  border-top: 2px solid #ff0037;
+
+  /* Safe area for iPhone home indicator */
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+#s11fb-root.open #s11fb-panel {
+  transform: translateY(0);
+}
+
+/* Header */
+#s11fb-header {
+  background: #230523;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+#s11fb-title {
+  font-family: 'Satoshi', Calibri, Arial, sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#s11fb-title::before {
+  content: '';
+  display: block;
+  width: 2px;
+  height: 13px;
+  background: #ff0037;
+  flex-shrink: 0;
+}
+
+#s11fb-close {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.18);
+  color: rgba(255,255,255,0.55);
+  width: 30px;
+  height: 30px;
+  font-size: 14px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, color 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#s11fb-close:hover { background: #ff0037; color: #fff; border-color: #ff0037; }
+
+/* Body */
+#s11fb-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-family: 'Satoshi', Calibri, Arial, sans-serif;
+}
+
+.s11fb-section-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #8a7e8a;
+  margin-bottom: 8px;
+}
+
+/* Stars */
+#s11fb-stars {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.s11fb-star {
+  font-size: 36px;
+  line-height: 1;
+  color: rgba(255,255,255,0.15);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  transition: color 0.15s, transform 0.1s;
+}
+
+.s11fb-star:active   { transform: scale(0.9); }
+.s11fb-star.active   { color: #ff0037; }
+
+/* Category tags */
+#s11fb-cats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.s11fb-cat {
+  height: 34px;
+  padding: 0 12px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.5);
+  font-family: 'Satoshi', Calibri, Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.s11fb-cat:hover  { background: rgba(255,255,255,0.1); color: #fff; }
+.s11fb-cat.active { background: #ff0037; color: #fff; border-color: #ff0037; }
+
+/* Textarea */
+#s11fb-text {
+  width: 100%;
+  min-height: 96px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: #f0f0f0;
+  font-family: 'Satoshi', Calibri, Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  padding: 12px 14px;
+  resize: vertical;
+  outline: none;
+  margin-top: 8px;
+  transition: border-color 0.15s;
+  line-height: 1.6;
+}
+
+#s11fb-text::placeholder { color: rgba(255,255,255,0.2); }
+#s11fb-text:focus         { border-color: rgba(255,255,255,0.35); }
+
+/* Submit button */
+#s11fb-submit {
+  margin-top: 14px;
+  height: 48px;
+  background: #ff0037;
+  color: #fff;
+  border: none;
+  font-family: 'Satoshi', Calibri, Arial, sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s;
+  width: 100%;
+}
+
+#s11fb-submit:hover:not(:disabled) { background: #cc002b; }
+#s11fb-submit:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* Status message */
+#s11fb-status {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.5);
+  text-align: center;
+  min-height: 18px;
+  margin-top: 6px;
+}
+
+#s11fb-status.s11fb-status-ok    { color: #3fb950; }
+#s11fb-status.s11fb-status-error { color: #ff0037; }
