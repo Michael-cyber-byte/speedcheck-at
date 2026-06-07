@@ -4,8 +4,12 @@ let currentSpeed    = 0;   // always km/h internally
 let currentLimit    = null; // always km/h internally
 let lastOverpassPos = null;
 let lastLimitFetchPos = null;
-let limitCooldown   = false;
+let limitCooldown   = false;   // true while a fetch is actually in flight
 let lastHighway     = '';
+
+// Local speed-limit cache (offline fallback) — survives in localStorage
+const LIMIT_CACHE_KEY = 'speedLimitCache_v1';
+const LIMIT_CACHE_MAX = 800;
 let lastPos         = null;  // { lat, lon, ts }
 let appStarted      = false;
 let wakeLock        = null;
@@ -488,10 +492,62 @@ function distanceM(lat1, lon1, lat2, lon2) {
 async function queryOverpass(url, query) {
   const res = await fetch(url, {
     method: 'POST', body: 'data=' + encodeURIComponent(query),
-    signal: AbortSignal.timeout(12000),
+    signal: AbortSignal.timeout(6000),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
+}
+
+// Race all mirrors in parallel — first one to answer wins. Much faster &
+// far less likely to look "Offline" than trying them one after another
+// (which could take 3 × 12s = 36s and stack up overlapping requests).
+async function queryOverpassRace(query) {
+  const attempts = OVERPASS_ENDPOINTS.map(ep =>
+    queryOverpass(ep.url, query).then(data => ({ data, label: ep.label }))
+  );
+  try {
+    return await Promise.any(attempts);
+  } catch {
+    return null; // all mirrors failed/timed out
+  }
+}
+
+// ── LOCAL LIMIT CACHE (offline fallback) ───────────────────────────────────
+// Grid cells of ~110m (3 decimal places). Once a road's limit has been seen
+// once, it's remembered — so a flaky connection later still shows a value.
+function loadLimitCache() {
+  try { return JSON.parse(localStorage.getItem(LIMIT_CACHE_KEY) || '{}'); }
+  catch { return {}; }
+}
+function cacheKeyFor(lat, lon) { return `${lat.toFixed(3)},${lon.toFixed(3)}`; }
+
+function cacheSpeedLimit(lat, lon, limit, highway, source) {
+  if (!limit) return;
+  const cache = loadLimitCache();
+  cache[cacheKeyFor(lat, lon)] = { limit, highway, source, ts: Date.now() };
+  const keys = Object.keys(cache);
+  if (keys.length > LIMIT_CACHE_MAX) {
+    keys.sort((a, b) => cache[a].ts - cache[b].ts)
+        .slice(0, keys.length - LIMIT_CACHE_MAX)
+        .forEach(k => delete cache[k]);
+  }
+  try { localStorage.setItem(LIMIT_CACHE_KEY, JSON.stringify(cache)); } catch {}
+}
+
+function lookupCachedLimit(lat, lon) {
+  const cache = loadLimitCache();
+  const direct = cache[cacheKeyFor(lat, lon)];
+  if (direct) return direct;
+  // search the 8 neighbouring ~110m cells too
+  const latR = Math.round(lat * 1000), lonR = Math.round(lon * 1000);
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      if (!dx && !dy) continue;
+      const hit = cache[`${((latR + dy) / 1000).toFixed(3)},${((lonR + dx) / 1000).toFixed(3)}`];
+      if (hit) return hit;
+    }
+  }
+  return null;
 }
 
 // Prefer ways with explicit maxspeed; among those, highest road priority
@@ -529,58 +585,63 @@ async function snapToRoad(lat, lon) {
 }
 
 async function fetchSpeedLimit(lat, lon) {
-  if (limitCooldown) return;
+  if (limitCooldown) return;   // a fetch is already in flight — never overlap
   if (lastLimitFetchPos && distanceM(lat,lon,lastLimitFetchPos.lat,lastLimitFetchPos.lon) < 40) return;
 
   limitCooldown = true;
-  setTimeout(() => { limitCooldown = false; }, 8000);
   lastLimitFetchPos = { lat, lon };
   setOverpassStatus('⟳');
 
-  // Snap to nearest road for better accuracy
-  const snapped = await snapToRoad(lat, lon);
-  const qLat = snapped ? snapped.lat : lat;
-  const qLon = snapped ? snapped.lon : lon;
-  const radius = snapped ? 25 : 50; // tighter radius when snapped
+  try {
+    // Snap to nearest road for better accuracy
+    const snapped = await snapToRoad(lat, lon);
+    const qLat = snapped ? snapped.lat : lat;
+    const qLon = snapped ? snapped.lon : lon;
+    const radius = snapped ? 25 : 50; // tighter radius when snapped
 
-  const query = `[out:json][timeout:12];
+    const query = `[out:json][timeout:12];
 way(around:${radius},${qLat},${qLon})["highway"]["highway"!~"footway|cycleway|path|steps|construction|proposed"];
 out tags 10;`;
 
-  let data = null, usedLabel = '';
-  for (const ep of OVERPASS_ENDPOINTS) {
-    try { data = await queryOverpass(ep.url, query); usedLabel = ep.label; break; } catch {}
-  }
+    const result = await queryOverpassRace(query);
+    const data = result?.data || null;
 
-  if (!data) {
-    if (lastHighway) setLimit(AT_DEFAULTS[lastHighway]||AT_DEFAULTS.default_urban, lastHighway, 'AT-Default');
-    else setOverpassStatus('Offline');
-    return;
-  }
-  if (!data.elements?.length) { setOverpassStatus('—'); return; }
+    if (!data) {
+      // All mirrors failed — fall back to local cache, then last-seen road type
+      const cached = lookupCachedLimit(qLat, qLon);
+      if (cached) setLimit(cached.limit, cached.highway, `${cached.source} · Cache`);
+      else if (lastHighway) setLimit(AT_DEFAULTS[lastHighway]||AT_DEFAULTS.default_urban, lastHighway, 'AT-Default');
+      else setOverpassStatus('Offline');
+      return;
+    }
+    if (!data.elements?.length) { setOverpassStatus('—'); return; }
 
-  const best    = pickBestWay(data.elements);
-  const tags    = best?.tags || {};
-  const highway = tags.highway || '';
-  // Check all maxspeed-related tags including zone tags
-  const maxspeed = tags.maxspeed || tags['maxspeed:forward'] || tags['maxspeed:backward']
-                 || tags['zone:maxspeed'] || tags['maxspeed:zone'] || '';
-  if (highway) lastHighway = highway;
+    const best    = pickBestWay(data.elements);
+    const tags    = best?.tags || {};
+    const highway = tags.highway || '';
+    // Check all maxspeed-related tags including zone tags
+    const maxspeed = tags.maxspeed || tags['maxspeed:forward'] || tags['maxspeed:backward']
+                   || tags['zone:maxspeed'] || tags['maxspeed:zone'] || '';
+    if (highway) lastHighway = highway;
 
-  let limit = null, source = '';
-  if (maxspeed) {
-    const n = parseInt(maxspeed);
-    if (!isNaN(n))                       { limit = n;   source = highway || 'OSM'; }
-    else if (maxspeed === 'AT:urban')    { limit = 50;  source = 'urban'; }
-    else if (maxspeed === 'AT:rural')    { limit = 100; source = 'rural'; }
-    else if (maxspeed === 'AT:motorway') { limit = 130; source = 'motorway'; }
-    else if (maxspeed === 'walk')        { limit = 7;   source = 'Schritt'; }
+    let limit = null, source = '';
+    if (maxspeed) {
+      const n = parseInt(maxspeed);
+      if (!isNaN(n))                       { limit = n;   source = highway || 'OSM'; }
+      else if (maxspeed === 'AT:urban')    { limit = 50;  source = 'urban'; }
+      else if (maxspeed === 'AT:rural')    { limit = 100; source = 'rural'; }
+      else if (maxspeed === 'AT:motorway') { limit = 130; source = 'motorway'; }
+      else if (maxspeed === 'walk')        { limit = 7;   source = 'Schritt'; }
+    }
+    if (!limit && highway) {
+      limit  = AT_DEFAULTS[highway] || AT_DEFAULTS.default_urban;
+      source = highway;
+    }
+    setLimit(limit, highway, source);
+    if (limit) cacheSpeedLimit(qLat, qLon, limit, highway, source);
+  } finally {
+    limitCooldown = false;   // ready for the next position update
   }
-  if (!limit && highway) {
-    limit  = AT_DEFAULTS[highway] || AT_DEFAULTS.default_urban;
-    source = highway;
-  }
-  setLimit(limit, highway, source);
 }
 
 // ── RADAR ──────────────────────────────────────────────────────────────────
@@ -597,10 +658,8 @@ async function fetchCameras(lat, lon) {
   setTimeout(() => { radarCooldown = false; }, 30000);
   lastRadarPos = { lat, lon };
   const query = `[out:json][timeout:12];node["highway"="speed_camera"](around:500,${lat},${lon});out;`;
-  let data = null;
-  for (const ep of OVERPASS_ENDPOINTS) {
-    try { data = await queryOverpass(ep.url, query); break; } catch {}
-  }
+  const result = await queryOverpassRace(query);
+  const data = result?.data || null;
   if (!data?.elements) return;
   clearCameraMarkers();
   data.elements.forEach(el => {
