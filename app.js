@@ -1,5 +1,5 @@
 // ── STATE ──────────────────────────────────────────────────────────────────
-const APP_VERSION = 'v1.16';
+const APP_VERSION = 'v1.17';
 let map, userMarker, accuracyCircle;
 let currentSpeed    = 0;   // always km/h internally
 let currentLimit    = null; // always km/h internally
@@ -975,7 +975,11 @@ function initMiniPlayer() {
   pipCanvas = document.getElementById('pip-canvas');
   pipCtx    = pipCanvas.getContext('2d');
   pipVideo  = document.getElementById('pip-video');
-  pipVideo.srcObject = pipCanvas.captureStream(4);
+  // Canvas vor captureStream() einmal befüllen, sonst startet der Stream
+  // mit einem leeren ersten Frame und iOS lehnt requestPictureInPicture()
+  // ab, solange das <video> noch keine Bilddaten hat.
+  drawMiniPlayerFrame();
+  pipVideo.srcObject = pipCanvas.captureStream(10);
   pipVideo.addEventListener('leavepictureinpicture', () => {
     pipActive = false;
     if (pipInterval) { clearInterval(pipInterval); pipInterval = null; }
@@ -1026,15 +1030,23 @@ async function toggleMiniPlayer() {
   }
   try {
     initMiniPlayer();
-    drawMiniPlayerFrame();
     if (!pipInterval) pipInterval = setInterval(drawMiniPlayerFrame, 500);
     await pipVideo.play();
+    // iOS akzeptiert requestPictureInPicture() erst, wenn das <video> einen
+    // Frame aus dem captureStream() erhalten hat — kurz darauf warten
+    // (mit Timeout, falls 'loadeddata' aus irgendeinem Grund nie kommt).
+    if (pipVideo.readyState < 2) {
+      await Promise.race([
+        new Promise(resolve => pipVideo.addEventListener('loadeddata', resolve, { once: true })),
+        new Promise(resolve => setTimeout(resolve, 1000)),
+      ]);
+    }
     await pipVideo.requestPictureInPicture();
     pipActive = true;
-  } catch {
+  } catch (e) {
     pipActive = false;
     if (pipInterval) { clearInterval(pipInterval); pipInterval = null; }
-    alert('Mini-Player konnte nicht gestartet werden.');
+    alert('Mini-Player konnte nicht gestartet werden: ' + (e?.name || e));
   }
   updatePipBtn();
 }

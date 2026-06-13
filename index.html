@@ -125,7 +125,7 @@
 
 <!-- Mini-Player (PiP): off-screen canvas streamed into a hidden <video> -->
 <canvas id="pip-canvas" width="320" height="240" style="position:fixed;left:-9999px;top:0;"></canvas>
-<video id="pip-video" muted playsinline style="position:fixed;left:-9999px;top:0;width:2px;height:2px;"></video>
+<video id="pip-video" muted playsinline webkit-playsinline="true" style="position:fixed;right:0;bottom:0;width:2px;height:2px;opacity:0.01;"></video>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/leaflet-rotate@0.2.7/dist/leaflet-rotate.js"></script>
