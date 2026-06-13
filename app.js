@@ -71,6 +71,38 @@ function getAudioCtx() {
   return audioCtx;
 }
 
+// On iOS Safari, raw Web Audio oscillators stay silent while the hardware
+// mute switch is on, unless a real <audio>/<video> element has played —
+// that flips the page's audio session into the "playback" category. A
+// looping near-silent WAV (generated on the fly, no asset needed) does
+// the trick and makes playDoubleBeep() audible even with ringer muted.
+let silentAudioEl = null;
+
+function silentWavUrl() {
+  const sr = 8000, samples = 800; // 0.1s, 8-bit mono PCM, all-silence
+  const buf = new ArrayBuffer(44 + samples);
+  const view = new DataView(buf);
+  const str = (off, s) => { for (let i = 0; i < s.length; i++) view.setUint8(off + i, s.charCodeAt(i)); };
+  str(0, 'RIFF'); view.setUint32(4, 36 + samples, true); str(8, 'WAVE');
+  str(12, 'fmt '); view.setUint32(16, 16, true); view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true); view.setUint32(24, sr, true); view.setUint32(28, sr, true);
+  view.setUint16(32, 1, true); view.setUint16(34, 8, true);
+  str(36, 'data'); view.setUint32(40, samples, true);
+  for (let i = 0; i < samples; i++) view.setUint8(44 + i, 128);
+  return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+}
+
+function unlockMediaSession() {
+  try {
+    if (!silentAudioEl) {
+      silentAudioEl = new Audio(silentWavUrl());
+      silentAudioEl.loop = true;
+      silentAudioEl.volume = 0.01;
+    }
+    silentAudioEl.play().catch(() => {});
+  } catch {}
+}
+
 function unlockAudio() {
   try {
     const ctx = getAudioCtx();
@@ -79,6 +111,7 @@ function unlockAudio() {
     const src = ctx.createBufferSource();
     src.buffer = buf; src.connect(ctx.destination); src.start(0);
   } catch {}
+  unlockMediaSession();
 }
 
 function startSilentLoop() {
@@ -140,6 +173,7 @@ function playCameraBeep() {
 
 function testBeep() {
   try { getAudioCtx().resume(); } catch {}
+  unlockMediaSession();
   const saved = soundMode;
   if (saved === 'off') { soundMode = 'beep'; }
   playDoubleBeep(80); // G4 in DUR-Modus, 880Hz in PIEP
@@ -315,7 +349,11 @@ function scheduleBearingUpdate(heading) {
   smoothedHeading = lerpAngle(smoothedHeading, heading, 0.25);
   pendingBearing  = smoothedHeading;
   const el = userMarker?.getElement?.();
-  if (el) el.style.transform = `rotate(${smoothedHeading}deg)`;
+  // In heading-up mode the map itself is rotated via setBearing() so that
+  // the direction of travel points up — the marker icon must stay at 0deg
+  // (pointing up) instead of also rotating, or the two rotations add up
+  // and the car ends up pointing sideways instead of straight ahead.
+  if (el) el.style.transform = `rotate(${compassMode === 'heading' ? 0 : smoothedHeading}deg)`;
   if (!bearingRAF && compassMode === 'heading') {
     bearingRAF = requestAnimationFrame(() => {
       if (pendingBearing !== null && map) {
@@ -584,6 +622,42 @@ async function snapToRoad(lat, lon) {
   return null;
 }
 
+// Query Overpass for the way nearest (lat, lon) and resolve its speed limit.
+// Returns { limit, highway, source } on success, null if no road found
+// nearby, or undefined if all mirrors failed (offline).
+async function resolveLimitFromOverpass(lat, lon, radius) {
+  const query = `[out:json][timeout:12];
+way(around:${radius},${lat},${lon})["highway"]["highway"!~"footway|cycleway|path|steps|construction|proposed"];
+out tags 10;`;
+
+  const result = await queryOverpassRace(query);
+  const data = result?.data || null;
+  if (!data) return undefined;
+  if (!data.elements?.length) return null;
+
+  const best    = pickBestWay(data.elements);
+  const tags    = best?.tags || {};
+  const highway = tags.highway || '';
+  // Check all maxspeed-related tags including zone tags
+  const maxspeed = tags.maxspeed || tags['maxspeed:forward'] || tags['maxspeed:backward']
+                 || tags['zone:maxspeed'] || tags['maxspeed:zone'] || '';
+
+  let limit = null, source = '';
+  if (maxspeed) {
+    const n = parseInt(maxspeed);
+    if (!isNaN(n))                       { limit = n;   source = highway || 'OSM'; }
+    else if (maxspeed === 'AT:urban')    { limit = 50;  source = 'urban'; }
+    else if (maxspeed === 'AT:rural')    { limit = 100; source = 'rural'; }
+    else if (maxspeed === 'AT:motorway') { limit = 130; source = 'motorway'; }
+    else if (maxspeed === 'walk')        { limit = 7;   source = 'Schritt'; }
+  }
+  if (!limit && highway) {
+    limit  = AT_DEFAULTS[highway] || AT_DEFAULTS.default_urban;
+    source = highway;
+  }
+  return { limit, highway, source };
+}
+
 async function fetchSpeedLimit(lat, lon) {
   if (limitCooldown) return;   // a fetch is already in flight — never overlap
   if (lastLimitFetchPos && distanceM(lat,lon,lastLimitFetchPos.lat,lastLimitFetchPos.lon) < 40) return;
@@ -599,14 +673,9 @@ async function fetchSpeedLimit(lat, lon) {
     const qLon = snapped ? snapped.lon : lon;
     const radius = snapped ? 25 : 50; // tighter radius when snapped
 
-    const query = `[out:json][timeout:12];
-way(around:${radius},${qLat},${qLon})["highway"]["highway"!~"footway|cycleway|path|steps|construction|proposed"];
-out tags 10;`;
+    const res = await resolveLimitFromOverpass(qLat, qLon, radius);
 
-    const result = await queryOverpassRace(query);
-    const data = result?.data || null;
-
-    if (!data) {
+    if (res === undefined) {
       // All mirrors failed — fall back to local cache, then last-seen road type
       const cached = lookupCachedLimit(qLat, qLon);
       if (cached) setLimit(cached.limit, cached.highway, `${cached.source} · Cache`);
@@ -614,33 +683,62 @@ out tags 10;`;
       else setOverpassStatus('Offline');
       return;
     }
-    if (!data.elements?.length) { setOverpassStatus('—'); return; }
+    if (res === null) { setOverpassStatus('—'); return; }
 
-    const best    = pickBestWay(data.elements);
-    const tags    = best?.tags || {};
-    const highway = tags.highway || '';
-    // Check all maxspeed-related tags including zone tags
-    const maxspeed = tags.maxspeed || tags['maxspeed:forward'] || tags['maxspeed:backward']
-                   || tags['zone:maxspeed'] || tags['maxspeed:zone'] || '';
-    if (highway) lastHighway = highway;
-
-    let limit = null, source = '';
-    if (maxspeed) {
-      const n = parseInt(maxspeed);
-      if (!isNaN(n))                       { limit = n;   source = highway || 'OSM'; }
-      else if (maxspeed === 'AT:urban')    { limit = 50;  source = 'urban'; }
-      else if (maxspeed === 'AT:rural')    { limit = 100; source = 'rural'; }
-      else if (maxspeed === 'AT:motorway') { limit = 130; source = 'motorway'; }
-      else if (maxspeed === 'walk')        { limit = 7;   source = 'Schritt'; }
-    }
-    if (!limit && highway) {
-      limit  = AT_DEFAULTS[highway] || AT_DEFAULTS.default_urban;
-      source = highway;
-    }
-    setLimit(limit, highway, source);
-    if (limit) cacheSpeedLimit(qLat, qLon, limit, highway, source);
+    if (res.highway) lastHighway = res.highway;
+    setLimit(res.limit, res.highway, res.source);
+    if (res.limit) cacheSpeedLimit(qLat, qLon, res.limit, res.highway, res.source);
   } finally {
     limitCooldown = false;   // ready for the next position update
+  }
+}
+
+// ── LOOKAHEAD ANNOUNCEMENT ───────────────────────────────────────────────
+// Resolving the limit at the current position only tells us the zone we're
+// already in — by the time it's announced, the car has already crossed the
+// border. Instead, check the road a bit ahead (in the direction of travel)
+// and announce early if its limit differs from the current one.
+const LOOKAHEAD_DIST = 80; // meters ahead to check for an upcoming limit change
+let lookaheadCooldown = false;
+let lastLookaheadPos  = null;
+
+// Destination point given a start coordinate, bearing (deg, 0=N) and distance (m)
+function projectPoint(lat, lon, bearingDeg, distM) {
+  const R = 6371000;
+  const br   = bearingDeg * Math.PI / 180;
+  const lat1 = lat * Math.PI / 180, lon1 = lon * Math.PI / 180;
+  const dR   = distM / R;
+  const lat2 = Math.asin(Math.sin(lat1) * Math.cos(dR) + Math.cos(lat1) * Math.sin(dR) * Math.cos(br));
+  const lon2 = lon1 + Math.atan2(
+    Math.sin(br) * Math.sin(dR) * Math.cos(lat1),
+    Math.cos(dR) - Math.sin(lat1) * Math.sin(lat2)
+  );
+  return { lat: lat2 * 180 / Math.PI, lon: lon2 * 180 / Math.PI };
+}
+
+async function fetchLookaheadLimit(lat, lon, headingDeg) {
+  // Need a known current limit and a direction of travel to project ahead
+  if (currentLimit == null || headingDeg == null || currentSpeed < 10) return;
+  if (lookaheadCooldown) return;
+  if (lastLookaheadPos && distanceM(lat,lon,lastLookaheadPos.lat,lastLookaheadPos.lon) < 50) return;
+
+  lookaheadCooldown = true;
+  lastLookaheadPos = { lat, lon };
+
+  try {
+    const ahead   = projectPoint(lat, lon, headingDeg, LOOKAHEAD_DIST);
+    const snapped = await snapToRoad(ahead.lat, ahead.lon);
+    const qLat = snapped ? snapped.lat : ahead.lat;
+    const qLon = snapped ? snapped.lon : ahead.lon;
+    const res  = await resolveLimitFromOverpass(qLat, qLon, snapped ? 25 : 50);
+    if (!res || res.limit == null) return;
+
+    if (res.limit !== currentLimit && res.limit !== lastAnnouncedLimit) {
+      lastAnnouncedLimit = res.limit;
+      speak(`Achtung, Tempo ${res.limit}`);
+    }
+  } finally {
+    lookaheadCooldown = false;
   }
 }
 
@@ -797,6 +895,7 @@ function startGPS() {
       updateMap(lat, lon, accuracy);
       applyHeading(heading);
       fetchSpeedLimit(lat, lon);
+      fetchLookaheadLimit(lat, lon, heading);
       fetchCameras(lat, lon);
       checkCameraProximity(lat, lon);
     },
