@@ -1,4 +1,5 @@
 // ── STATE ──────────────────────────────────────────────────────────────────
+const APP_VERSION = 'v1.16';
 let map, userMarker, accuracyCircle;
 let currentSpeed    = 0;   // always km/h internally
 let currentLimit    = null; // always km/h internally
@@ -1054,3 +1055,4 @@ updateVoiceBtn();
 updateRadarBtn();
 updateUnitDisplay();
 updatePipBtn();
+document.getElementById('version-label').textContent = APP_VERSION;

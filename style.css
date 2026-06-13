@@ -340,6 +340,14 @@ html, body {
   flex-shrink: 0;
 }
 
+#version-label {
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
 /* ── CONTROLS BAR ───────────────────────────────────────────────────────── */
 
 #controls-bar {
