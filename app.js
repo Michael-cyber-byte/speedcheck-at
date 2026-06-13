@@ -98,8 +98,29 @@ function unlockMediaSession() {
       silentAudioEl = new Audio(silentWavUrl());
       silentAudioEl.loop = true;
       silentAudioEl.volume = 0.01;
+      // iOS sometimes pauses the audio element on route changes (e.g. when
+      // plugging into a car's USB port) — without this it never resumes,
+      // the page falls back to the silent "ambient" audio session and all
+      // Web Audio output (beeps) goes dead again.
+      silentAudioEl.addEventListener('pause', () => {
+        if (appStarted) silentAudioEl.play().catch(() => {});
+      });
     }
     silentAudioEl.play().catch(() => {});
+
+    // Registering a MediaSession marks SpeedCheck as the active "Now Playing"
+    // app — this is what lets CarPlay/USB audio routing pick it up and gives
+    // the page extra background-execution time (needed for the speech
+    // announcements to fire while e.g. Google Maps is in the foreground).
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: 'SpeedCheck AT', artist: 'Tempo-Überwachung aktiv',
+      });
+      navigator.mediaSession.playbackState = 'playing';
+      ['play','pause','stop','seekto','previoustrack','nexttrack'].forEach(action => {
+        try { navigator.mediaSession.setActionHandler(action, () => {}); } catch {}
+      });
+    }
   } catch {}
 }
 
@@ -337,6 +358,11 @@ let pendingBearing    = null;
 let bearingRAF        = null;
 let smoothedHeading   = null;
 
+// Above this speed, GPS course-over-ground drives heading-up rotation —
+// the magnetometer compass drifts badly in a car (metal body, mounts,
+// electronics) and is only used as a fallback while stationary/slow.
+const GPS_HEADING_MIN_SPEED = 5; // km/h
+
 function lerpAngle(current, target, t) {
   if (current === null) return target;
   let diff = target - current;
@@ -366,6 +392,7 @@ function scheduleBearingUpdate(heading) {
 
 function handleDeviceOrientation(e) {
   if (!orientationActive || compassMode !== 'heading') return;
+  if (currentSpeed >= GPS_HEADING_MIN_SPEED) return; // GPS course wins while driving
   let heading = null;
   if (e.webkitCompassHeading !== undefined && e.webkitCompassHeading !== null) {
     heading = e.webkitCompassHeading;
@@ -408,9 +435,9 @@ function updateCompassBtn() {
 }
 
 function applyHeading(heading) {
-  if (heading == null || orientationActive) return;
+  if (heading == null) return;
   currentHeading = heading;
-  scheduleBearingUpdate(heading);
+  if (currentSpeed >= GPS_HEADING_MIN_SPEED) scheduleBearingUpdate(heading);
 }
 
 // ── RADAR TOGGLE ───────────────────────────────────────────────────────────
@@ -446,10 +473,15 @@ async function requestWakeLock() {
 }
 
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && appStarted) {
+  if (!appStarted) return;
+  if (document.visibilityState === 'visible') {
     requestWakeLock();
     try { if (audioCtx?.state === 'suspended') audioCtx.resume(); } catch {}
   }
+  // Re-assert the silent loop + MediaSession when going to background too —
+  // some iOS versions drop them right as the page is hidden, which is the
+  // moment they matter most (announcements while another app is in front).
+  unlockMediaSession();
 });
 
 // ── START ──────────────────────────────────────────────────────────────────
@@ -471,7 +503,10 @@ function initMap(lat, lon) {
     zoomControl: true, attributionControl: false,
     rotate: true, bearingControl: false,
   }).setView([lat, lon], 16);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+  // keepBuffer high: in heading-up mode the rotated viewport's corners reach
+  // tiles outside the unrotated bounding box — without extra buffer those
+  // corner tiles stay blank until the map is re-panned.
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, keepBuffer: 6 }).addTo(map);
   const icon = L.divIcon({ className: 'car-marker', iconSize: [20,28], iconAnchor: [10,14] });
   userMarker     = L.marker([lat, lon], { icon }).addTo(map);
   accuracyCircle = L.circle([lat, lon], {
