@@ -161,35 +161,49 @@ function playTone(freq, startTime, duration = 0.10, volume = 0.15) {
   } catch {}
 }
 
+// AudioContexts get auto-suspended by the browser after a period without
+// active nodes (no beep playing). While suspended, ctx.currentTime is frozen
+// — scheduling tones against it before resume() actually completes gives
+// start/stop times that are already in the past, so the tone is silent.
+// Waiting for resume() to finish (currentTime ticking again) before
+// scheduling fixes beeps that go quiet after the first one.
+function withRunningCtx(fn) {
+  const ctx = getAudioCtx();
+  if (ctx.state === 'suspended') ctx.resume().then(fn).catch(() => {});
+  else fn();
+}
+
 function playDoubleBeep(threshold) {
   if (soundMode === 'off') return;
-  try {
-    const ctx = getAudioCtx();
-    if (ctx.state === 'suspended') ctx.resume();
-    const now = ctx.currentTime;
+  withRunningCtx(() => {
+    try {
+      const ctx = getAudioCtx();
+      const now = ctx.currentTime;
 
-    if (soundMode === 'scale') {
-      // DUR-Modus: jede Schwelle hat ihre eigene Note (C-Dur C4–B4)
-      const freq = C_MAJOR_FREQ[threshold] || 440;
-      playTone(freq, now,        0.14, 0.18); // längere, klarere Töne
-      playTone(freq, now + 0.22, 0.14, 0.18);
-    } else {
-      // PIEP-Modus: standard 880Hz
-      playTone(880, now,        0.09, 0.13);
-      playTone(880, now + 0.17, 0.09, 0.13);
-    }
-  } catch {}
+      if (soundMode === 'scale') {
+        // DUR-Modus: jede Schwelle hat ihre eigene Note (C-Dur C4–B4)
+        const freq = C_MAJOR_FREQ[threshold] || 440;
+        playTone(freq, now,        0.14, 0.18); // längere, klarere Töne
+        playTone(freq, now + 0.22, 0.14, 0.18);
+      } else {
+        // PIEP-Modus: standard 880Hz
+        playTone(880, now,        0.09, 0.13);
+        playTone(880, now + 0.17, 0.09, 0.13);
+      }
+    } catch {}
+  });
 }
 
 function playCameraBeep() {
-  try {
-    const ctx = getAudioCtx();
-    if (ctx.state === 'suspended') ctx.resume();
-    const now = ctx.currentTime;
-    playTone(1200, now,        0.06, 0.10);
-    playTone(1200, now + 0.12, 0.06, 0.10);
-    playTone(1200, now + 0.24, 0.06, 0.10);
-  } catch {}
+  withRunningCtx(() => {
+    try {
+      const ctx = getAudioCtx();
+      const now = ctx.currentTime;
+      playTone(1200, now,        0.06, 0.10);
+      playTone(1200, now + 0.12, 0.06, 0.10);
+      playTone(1200, now + 0.24, 0.06, 0.10);
+    } catch {}
+  });
 }
 
 function testBeep() {
