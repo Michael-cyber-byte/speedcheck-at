@@ -1,5 +1,5 @@
 // ── STATE ──────────────────────────────────────────────────────────────────
-const APP_VERSION = 'v1.17';
+const APP_VERSION = 'v1.18';
 let map, userMarker, accuracyCircle;
 let currentSpeed    = 0;   // always km/h internally
 let currentLimit    = null; // always km/h internally
@@ -975,11 +975,14 @@ function initMiniPlayer() {
   pipCanvas = document.getElementById('pip-canvas');
   pipCtx    = pipCanvas.getContext('2d');
   pipVideo  = document.getElementById('pip-video');
-  // Canvas vor captureStream() einmal befüllen, sonst startet der Stream
-  // mit einem leeren ersten Frame und iOS lehnt requestPictureInPicture()
-  // ab, solange das <video> noch keine Bilddaten hat.
+  // Canvas vor captureStream() einmal befüllen und das <video> schon beim
+  // Boot abspielen (stumm, 2x2px) — so hat es beim Tap auf den PiP-Button
+  // bereits Frames (readyState 4) und requestPictureInPicture() kann
+  // synchron im Klick-Handler aufgerufen werden. Auf iOS/WebKit zählt ein
+  // await davor nicht mehr als User-Geste -> NotAllowedError.
   drawMiniPlayerFrame();
   pipVideo.srcObject = pipCanvas.captureStream(10);
+  pipVideo.play().catch(() => {});
   pipVideo.addEventListener('leavepictureinpicture', () => {
     pipActive = false;
     if (pipInterval) { clearInterval(pipInterval); pipInterval = null; }
@@ -1019,36 +1022,30 @@ function drawMiniPlayerFrame() {
   ctx.fillText('LIMIT', w / 2, h * 0.86 + 28);
 }
 
-async function toggleMiniPlayer() {
+function toggleMiniPlayer() {
   if (!pipSupported()) {
     alert('Mini-Player (PiP) wird von diesem Browser nicht unterstützt.');
     return;
   }
   if (pipActive) {
-    try { await document.exitPictureInPicture(); } catch {}
+    document.exitPictureInPicture().catch(() => {});
     return;
   }
-  try {
-    initMiniPlayer();
-    if (!pipInterval) pipInterval = setInterval(drawMiniPlayerFrame, 500);
-    await pipVideo.play();
-    // iOS akzeptiert requestPictureInPicture() erst, wenn das <video> einen
-    // Frame aus dem captureStream() erhalten hat — kurz darauf warten
-    // (mit Timeout, falls 'loadeddata' aus irgendeinem Grund nie kommt).
-    if (pipVideo.readyState < 2) {
-      await Promise.race([
-        new Promise(resolve => pipVideo.addEventListener('loadeddata', resolve, { once: true })),
-        new Promise(resolve => setTimeout(resolve, 1000)),
-      ]);
-    }
-    await pipVideo.requestPictureInPicture();
+  // initMiniPlayer() ist beim Boot bereits gelaufen (siehe unten) — hier nur
+  // als Fallback, falls pipSupported() sich erst nachträglich geändert hat.
+  initMiniPlayer();
+  if (!pipInterval) pipInterval = setInterval(drawMiniPlayerFrame, 500);
+  // KEIN await vor requestPictureInPicture() — muss synchron im
+  // Klick-Handler bleiben, sonst lehnt iOS/WebKit mit NotAllowedError ab.
+  pipVideo.requestPictureInPicture().then(() => {
     pipActive = true;
-  } catch (e) {
+    updatePipBtn();
+  }).catch(e => {
     pipActive = false;
     if (pipInterval) { clearInterval(pipInterval); pipInterval = null; }
     alert('Mini-Player konnte nicht gestartet werden: ' + (e?.name || e));
-  }
-  updatePipBtn();
+    updatePipBtn();
+  });
 }
 
 function updatePipBtn() {
@@ -1066,5 +1063,6 @@ updateSoundBtn();
 updateVoiceBtn();
 updateRadarBtn();
 updateUnitDisplay();
+if (pipSupported()) initMiniPlayer();
 updatePipBtn();
 document.getElementById('version-label').textContent = APP_VERSION;
