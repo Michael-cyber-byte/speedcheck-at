@@ -1,4 +1,4 @@
-const CACHE = 'speedcheck-v7';
+const CACHE = 'speedcheck-v8';
 const STATIC = [
   '/',
   '/index.html',

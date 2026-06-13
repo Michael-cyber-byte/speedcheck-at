@@ -52,6 +52,11 @@
       <div id="threshold-picker"></div>
     </div>
 
+    <div class="setting-row">
+      <div class="setting-label">Mini-Player (PiP)</div>
+      <button class="setting-btn" id="pip-btn" onclick="toggleMiniPlayer()">🖼 AUS</button>
+    </div>
+
     <div class="setting-row" style="margin-top:6px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.08)">
       <div class="setting-label">Feedback</div>
       <button class="setting-btn" onclick="closeSettings(); S11Feedback.open()">★ Feedback senden</button>
@@ -117,6 +122,10 @@
 
 <div id="alert-overlay"></div>
 
+<!-- Mini-Player (PiP): off-screen canvas streamed into a hidden <video> -->
+<canvas id="pip-canvas" width="320" height="240" style="position:fixed;left:-9999px;top:0;"></canvas>
+<video id="pip-video" muted playsinline style="position:fixed;left:-9999px;top:0;width:2px;height:2px;"></video>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/leaflet-rotate@0.2.7/dist/leaflet-rotate.js"></script>
 <script src="shared/feedback.js"></script>
@@ -124,7 +133,7 @@
 <script>
   S11Feedback.init({
     appName:       'SpeedCheck AT',
-    version:       'v1.15',
+    version:       'v1.16',
     fallbackEmail: 'michael@shift11.com',
     // endpoint: 'https://formspree.io/f/DEINE_FORM_ID', // → Formspree einrichten für direktes Speichern
   });

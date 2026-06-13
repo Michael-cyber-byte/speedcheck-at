@@ -533,6 +533,8 @@ body.drive-mode #test-btn        { display: none; }
   white-space: nowrap;
 }
 .setting-btn:active { background: var(--red); color: #fff; }
+#pip-btn[data-state="on"] { background: var(--red); color: #fff; }
+#pip-btn:disabled { opacity: 0.35; cursor: default; }
 
 /* Threshold picker */
 #threshold-picker {

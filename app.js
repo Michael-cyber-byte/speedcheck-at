@@ -956,6 +956,96 @@ function startGPS() {
   );
 }
 
+// ── MINI-PLAYER (PICTURE-IN-PICTURE) ────────────────────────────────────────
+// Opt-in floating window (like YouTube's PiP) showing just speed + limit +
+// sound/voice status, so the user can run Google Maps in front while keeping
+// an eye (and ear) on SpeedCheck. Off by default; toggled in Settings.
+// Implementation: redraw a canvas, stream it via captureStream() into a
+// hidden <video>, then request native PiP on that video.
+let pipCanvas = null, pipCtx = null, pipVideo = null;
+let pipInterval = null, pipActive = false;
+
+function pipSupported() {
+  return 'pictureInPictureEnabled' in document && document.pictureInPictureEnabled;
+}
+
+function initMiniPlayer() {
+  if (pipCanvas) return;
+  pipCanvas = document.getElementById('pip-canvas');
+  pipCtx    = pipCanvas.getContext('2d');
+  pipVideo  = document.getElementById('pip-video');
+  pipVideo.srcObject = pipCanvas.captureStream(4);
+  pipVideo.addEventListener('leavepictureinpicture', () => {
+    pipActive = false;
+    if (pipInterval) { clearInterval(pipInterval); pipInterval = null; }
+    updatePipBtn();
+  });
+}
+
+function drawMiniPlayerFrame() {
+  const ctx = pipCtx, w = pipCanvas.width, h = pipCanvas.height;
+  ctx.fillStyle = '#230523';
+  ctx.fillRect(0, 0, w, h);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+
+  // Status row: sound mode (left) + voice (right)
+  ctx.font = '600 20px Arial, sans-serif';
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  const soundLabel = { off: '♪ AUS', beep: '♪ PIEP', scale: '♪ DUR' }[soundMode];
+  ctx.textAlign = 'left';  ctx.fillText(soundLabel, 14, 22);
+  ctx.textAlign = 'right'; ctx.fillText(voiceEnabled ? '🔊 AN' : '🔊 AUS', w - 14, 22);
+
+  // Speed: big number, red if over limit
+  const speeding = currentLimit && currentSpeed - currentLimit > 0;
+  ctx.textAlign = 'center';
+  ctx.fillStyle = speeding ? '#ff0037' : '#ffffff';
+  ctx.font = '700 100px Arial, sans-serif';
+  ctx.fillText(String(kmhToDisplay(currentSpeed) ?? 0), w / 2, h * 0.46);
+  ctx.fillStyle = 'rgba(255,255,255,0.6)';
+  ctx.font = '600 22px Arial, sans-serif';
+  ctx.fillText(unitLabel(), w / 2, h * 0.46 + 64);
+
+  // Limit
+  ctx.fillStyle = '#ff0037';
+  ctx.font = '700 40px Arial, sans-serif';
+  ctx.fillText(currentLimit ? String(kmhToDisplay(currentLimit)) : '—', w / 2, h * 0.86);
+  ctx.fillStyle = 'rgba(255,255,255,0.5)';
+  ctx.font = '600 16px Arial, sans-serif';
+  ctx.fillText('LIMIT', w / 2, h * 0.86 + 28);
+}
+
+async function toggleMiniPlayer() {
+  if (!pipSupported()) {
+    alert('Mini-Player (PiP) wird von diesem Browser nicht unterstützt.');
+    return;
+  }
+  if (pipActive) {
+    try { await document.exitPictureInPicture(); } catch {}
+    return;
+  }
+  try {
+    initMiniPlayer();
+    drawMiniPlayerFrame();
+    if (!pipInterval) pipInterval = setInterval(drawMiniPlayerFrame, 500);
+    await pipVideo.play();
+    await pipVideo.requestPictureInPicture();
+    pipActive = true;
+  } catch {
+    pipActive = false;
+    if (pipInterval) { clearInterval(pipInterval); pipInterval = null; }
+    alert('Mini-Player konnte nicht gestartet werden.');
+  }
+  updatePipBtn();
+}
+
+function updatePipBtn() {
+  const btn = document.getElementById('pip-btn');
+  if (!btn) return;
+  btn.textContent   = pipActive ? '🖼 AN' : '🖼 AUS';
+  btn.dataset.state = pipActive ? 'on' : 'off';
+  btn.disabled      = !pipSupported();
+}
+
 // ── BOOT ───────────────────────────────────────────────────────────────────
 initMap(48.2082, 16.3738);
 applyTheme();
@@ -963,3 +1053,4 @@ updateSoundBtn();
 updateVoiceBtn();
 updateRadarBtn();
 updateUnitDisplay();
+updatePipBtn();
